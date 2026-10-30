@@ -1,0 +1,1291 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2B1D16">
+<meta name="description" content="Turni di carico, sacchi di pellet e informazioni sulla caldaia di casa Solaroli.">
+<title>Caldaia Casa Solaroli</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icona-192.png">
+<style>
+:root{
+  --carta:#FBF7F2; --scheda:#FFFFFF; --inchiostro:#1F1A17; --tenue:#6B625B; --linea:#E8DFD5;
+  --fuoco:#C2410C; --fuoco-chiaro:#FFEDD5; --brace:#2B1D16;
+  --ok:#15803D; --ok-chiaro:#DCFCE7; --avviso:#B45309; --avviso-chiaro:#FEF3C7; --errore:#B91C1C; --errore-chiaro:#FEE2E2;
+  --ombra:0 1px 2px rgba(43,29,22,.06),0 4px 14px rgba(43,29,22,.06);
+  --raggio:18px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --carta:#15110E; --scheda:#211B17; --inchiostro:#F4EEE8; --tenue:#B3A89E; --linea:#3A312A;
+    --fuoco:#FB923C; --fuoco-chiaro:#3B2416; --brace:#0E0B09;
+    --ok:#4ADE80; --ok-chiaro:#12301E; --avviso:#FBBF24; --avviso-chiaro:#33280F; --errore:#F87171; --errore-chiaro:#3A1717;
+    --ombra:none; color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:80px;scroll-padding-bottom:110px}
+body{margin:0;background:var(--carta);color:var(--inchiostro);font:18px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:calc(84px + env(safe-area-inset-bottom));overscroll-behavior-y:contain}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3{margin:0;line-height:1.2}
+h2{font-size:1.15rem;margin-bottom:10px}
+h3{font-size:1rem;margin:14px 0 6px}
+p{margin:6px 0}
+a{color:var(--fuoco)}
+.nascosto{display:none!important}
+
+/* Testata */
+.testata{position:sticky;top:0;z-index:20;background:var(--brace);color:#FFF7ED;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display:flex;align-items:center;gap:10px}
+.testata h1{font-size:1.2rem;font-weight:700;flex:1;display:flex;align-items:center;gap:8px}
+.testata h1 img{width:28px;height:28px;border-radius:7px}
+.stato-rete{font-size:.78rem;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);white-space:nowrap}
+.stato-rete.offline{background:#7C2D12}
+.stato-rete.attesa{background:#92400E}
+.icona-btn{background:none;border:0;color:inherit;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;cursor:pointer}
+.icona-btn:active{background:rgba(255,255,255,.12)}
+.icona-btn svg{width:26px;height:26px}
+.gira svg{animation:gira 1s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+main{max-width:640px;margin:0 auto;padding:6px 14px 20px}
+
+/* Schede */
+.scheda{background:var(--scheda);border-radius:var(--raggio);padding:16px;margin:12px 0;box-shadow:var(--ombra);border:1px solid var(--linea)}
+.tenue{color:var(--tenue)}
+.piccolo{font-size:.85rem}
+.riga{display:flex;align-items:center;gap:10px}
+.riga.spazio{justify-content:space-between}
+
+/* Avvisi in alto */
+.banner{border-radius:14px;padding:12px 14px;margin:12px 0;display:flex;gap:10px;align-items:flex-start}
+.banner.info{background:var(--fuoco-chiaro)}
+.banner.avviso{background:var(--avviso-chiaro)}
+.banner.errore{background:var(--errore-chiaro)}
+.banner.ok{background:var(--ok-chiaro)}
+.banner .testo{flex:1}
+.banner b{display:block}
+
+/* Turno corrente */
+.turno-ora{border-radius:var(--raggio);padding:18px 18px 16px;margin:12px 0;color:#fff;background:var(--c,#888);position:relative;overflow:hidden}
+.turno-ora .etichetta{font-size:.9rem;opacity:.92}
+.turno-ora .nome{font-size:2.2rem;font-weight:800;letter-spacing:-.01em;margin:2px 0}
+.turno-ora .date{font-size:1rem;opacity:.95}
+.turno-ora .tuo{display:inline-block;margin-top:10px;background:rgba(255,255,255,.95);color:var(--inchiostro);font-weight:700;border-radius:999px;padding:4px 12px;font-size:.9rem}
+
+/* Carico */
+.scelta{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:6px 0 14px}
+.scelta button{height:58px;border-radius:14px;border:2px solid var(--linea);background:var(--carta);font-size:1.5rem;font-weight:700;cursor:pointer}
+.scelta button[aria-pressed="true"]{border-color:var(--fuoco);background:var(--fuoco);color:#fff}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:14px;border:2px solid var(--linea);
+  background:var(--scheda);font-weight:650;cursor:pointer;padding:10px 14px;text-align:center}
+.btn:active{transform:scale(.99)}
+.btn.primario{background:var(--fuoco);border-color:var(--fuoco);color:#fff}
+.btn.grande{min-height:72px;font-size:1.35rem;border-radius:18px}
+.btn.piccolo{min-height:42px;font-size:.95rem;width:auto;padding:6px 14px;border-radius:12px}
+.btn.pericolo{color:var(--errore);border-color:var(--errore-chiaro)}
+.btn[disabled]{opacity:.5}
+.btns{display:flex;gap:10px;margin-top:12px}
+.btns .btn{flex:1}
+
+.lista{list-style:none;margin:6px 0 0;padding:0}
+.lista li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--linea)}
+.lista li:first-child{border-top:0}
+.lista .ora{font-variant-numeric:tabular-nums;color:var(--tenue);min-width:3.2em}
+.lista .cresce{flex:1}
+.lista b{white-space:nowrap}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.85rem;font-weight:700;color:#fff;background:var(--c,#888)}
+.etic{display:inline-block;border-radius:8px;padding:1px 8px;font-size:.78rem;font-weight:650;background:var(--carta);border:1px solid var(--linea);color:var(--tenue)}
+.etic.attesa{background:var(--avviso-chiaro);border-color:transparent;color:var(--avviso)}
+
+/* Serbatoio sacchi */
+.serbatoio{height:22px;border-radius:999px;background:var(--carta);border:1px solid var(--linea);overflow:hidden;margin:10px 0 6px}
+.serbatoio div{height:100%;background:var(--ok);border-radius:999px;transition:width .4s}
+.serbatoio.basso div{background:var(--avviso)}
+.serbatoio.critico div{background:var(--errore)}
+.numerone{font-size:2.6rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.griglia2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.cella{background:var(--carta);border-radius:14px;padding:12px}
+.cella .val{font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums}
+
+/* Turni */
+.selettore{display:flex;background:var(--carta);border:1px solid var(--linea);border-radius:14px;padding:4px;gap:4px}
+.selettore button{flex:1;border:0;background:none;border-radius:10px;padding:10px;font-weight:650;cursor:pointer}
+.selettore button[aria-pressed="true"]{background:var(--scheda);box-shadow:var(--ombra);color:var(--fuoco)}
+.spunta{display:flex;align-items:center;gap:10px;padding:10px 2px;cursor:pointer}
+.spunta input{width:24px;height:24px;accent-color:var(--fuoco)}
+.settimana{display:flex;align-items:stretch;gap:12px;padding:10px 0;border-top:1px solid var(--linea)}
+.settimana:first-child{border-top:0}
+.settimana .barra{width:8px;border-radius:6px;background:var(--c)}
+.settimana.previsto .barra{background:repeating-linear-gradient(180deg,var(--c) 0 6px,transparent 6px 10px)}
+.settimana .corpo{flex:1;min-width:0}
+.settimana .quando{font-weight:700}
+.settimana .chi{font-size:1.1rem}
+.settimana.corrente{background:var(--fuoco-chiaro);border-radius:12px;padding:10px;margin:2px -10px;border-top:0}
+.settimana.passata{opacity:.55}
+.settimana .azioni{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
+
+.mese-testa{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mese-testa b{font-size:1.1rem;text-transform:capitalize}
+.calendario{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calendario .gs{font-size:.75rem;text-align:center;color:var(--tenue);padding-bottom:2px}
+.calendario .g{aspect-ratio:1/1.05;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:650;
+  font-variant-numeric:tabular-nums;position:relative;background:var(--carta);font-size:.95rem}
+.calendario .g.fuori{opacity:.3}
+.calendario .g.oggi{outline:3px solid var(--inchiostro);outline-offset:-3px}
+.calendario .g small{font-size:.6rem;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.legenda{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+.campo{display:block;margin:10px 0}
+.campo span{display:block;font-size:.9rem;color:var(--tenue);margin-bottom:4px}
+.campo input,.campo select{width:100%;min-height:50px;border-radius:12px;border:2px solid var(--linea);background:var(--carta);padding:8px 12px}
+.campi2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.campo input{min-width:0}
+
+/* Pagina caldaia */
+details{border-top:1px solid var(--linea)}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;padding:14px 4px;font-weight:700;list-style:none;display:flex;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";margin-left:auto;width:10px;height:10px;border-right:2.5px solid var(--tenue);border-bottom:2.5px solid var(--tenue);transform:rotate(45deg);transition:transform .2s}
+details[open] summary::after{transform:rotate(-135deg)}
+.contenuto{padding:0 4px 14px}
+.codice{display:grid;grid-template-columns:4.2em 1fr;gap:10px;padding:8px 0;border-top:1px dashed var(--linea)}
+.codice:first-child{border-top:0}
+.codice code{font:700 1rem/1.3 ui-monospace,Menlo,Consolas,monospace;background:var(--brace);color:#FDBA74;border-radius:8px;padding:6px 4px;text-align:center;align-self:start;letter-spacing:.04em}
+.codice .chi-fa{font-size:.82rem;font-weight:700;margin-top:4px}
+.chi-fa.tu{color:var(--ok)} .chi-fa.fra{color:var(--avviso)}
+table.dati{width:100%;border-collapse:collapse;font-size:.95rem}
+table.dati td{padding:7px 4px;border-top:1px solid var(--linea);vertical-align:top}
+table.dati td:last-child{text-align:right;font-weight:650}
+
+/* Navigazione */
+.schede-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--scheda);border-top:1px solid var(--linea);
+  display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.schede-nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:12px;font-size:.8rem;font-weight:650;color:var(--tenue);cursor:pointer}
+.schede-nav button svg{width:28px;height:28px}
+.schede-nav button[aria-current="page"]{color:var(--fuoco);background:var(--fuoco-chiaro)}
+
+/* Messaggi */
+#toast{position:fixed;left:14px;right:14px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:40;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{max-width:560px;width:100%;background:var(--inchiostro);color:var(--carta);border-radius:14px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:600;animation:sale .25s ease-out}
+.toast.ok{background:var(--ok);color:#fff} .toast.errore{background:var(--errore);color:#fff} .toast.avviso{background:#92400E;color:#fff}
+@keyframes sale{from{transform:translateY(12px);opacity:0}}
+.velo{position:fixed;inset:0;z-index:50;background:rgba(20,14,10,.55);display:flex;align-items:flex-end;justify-content:center;padding:14px}
+.finestra{background:var(--scheda);border-radius:22px;padding:20px;width:100%;max-width:520px;margin-bottom:env(safe-area-inset-bottom);animation:sale .2s ease-out;max-height:90vh;overflow:auto}
+.finestra h2{font-size:1.3rem}
+.attesa-velo{position:fixed;inset:0;z-index:60;background:rgba(20,14,10,.35);display:grid;place-items:center}
+.attesa-velo div{background:var(--scheda);border-radius:16px;padding:16px 22px;font-weight:650;display:flex;gap:12px;align-items:center}
+.rotella{width:22px;height:22px;border-radius:50%;border:3px solid var(--linea);border-top-color:var(--fuoco);animation:gira .8s linear infinite}
+.scelta.tre{grid-template-columns:repeat(3,1fr)}
+.scelta.tre button{font-size:1rem;height:64px;line-height:1.15}
+.scelta.tre button small{display:block;font-size:.75rem;font-weight:600;opacity:.8}
+.campo input.numero{font-size:2.2rem;font-weight:800;text-align:center;min-height:72px}
+.link-btn{background:none;border:0;color:var(--fuoco);font-weight:650;text-decoration:underline;padding:12px 2px 2px;cursor:pointer;width:100%;text-align:center}
+.errore-finestra{color:var(--errore);font-weight:650;min-height:1.2em;margin-top:6px}
+.btn.mini{min-height:36px;font-size:.85rem;width:auto;padding:4px 10px;border-radius:10px}
+.vuoto{text-align:center;padding:30px 10px}
+.vuoto img{width:84px;height:84px;border-radius:20px}
+</style>
+</head>
+<body>
+<header class="testata">
+  <h1><img src="icona-192.png" alt="">Caldaia</h1>
+  <span id="statoRete" class="stato-rete nascosto"></span>
+  <button class="icona-btn" id="btnAggiorna" data-az="aggiorna" aria-label="Aggiorna">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+  </button>
+  <button class="icona-btn" data-az="vai" data-p="impostazioni" aria-label="Impostazioni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<main id="pagina"></main>
+
+<nav class="schede-nav" id="nav">
+  <button data-az="vai" data-p="oggi">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Oggi</button>
+  <button data-az="vai" data-p="turni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Turni</button>
+  <button data-az="vai" data-p="pellet">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-1 3 2 3v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9l2-3z"/><path d="M8 6h8M9 14h6"/></svg>Pellet</button>
+  <button data-az="vai" data-p="caldaia">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c1 3.5 5.5 5.5 5.5 10.5a5.5 5.5 0 0 1-11 0c0-2.4 1.3-4 2.5-5 .2 2 1.2 3 2 3.3C10.7 8.7 11 5 12 2.5z"/></svg>Caldaia</button>
+</nav>
+
+<div id="toast" aria-live="polite"></div>
+<div id="modale"></div>
+
+<script type="module">
+/* =====================================================================
+ *  CALDAIA CASA SOLAROLI – app (versione 1.1, 30 ottobre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.1).
+ *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
+ * ===================================================================== */
+const APP_VER = '1.1';
+const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
+const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const firebaseConfig = {
+  apiKey: 'AIzaSyAxMsoPdNBlwtyoKepBLlsWnRPtC5X3iwU',
+  authDomain: 'caldaia-solaroli.firebaseapp.com',
+  projectId: 'caldaia-solaroli',
+  storageBucket: 'caldaia-solaroli.firebasestorage.app',
+  messagingSenderId: '1038160638495',
+  appId: '1:1038160638495:web:66ae4d1928f9dc6ec4db2a'
+};
+const VAPID = 'BI3cSoHfo7FVWr6kshtu-ZnZ8wBUe0mbfEbu8IW8akGY3QahUCnFsamNWQIxZvwHQ-ltKp2P7DnFycY_Y-Tx1LU';
+const CAPIENZA_LOCALE = 150;   // sacchi che stanno nel locale
+const MAX_SACCHI = 6;          // massimo per un carico (tramoggia 80 kg ≈ 5,3 sacchi)
+
+/* ---------- memoria del telefono ---------- */
+const K = {
+  codice: 'cald.codice', stato: 'cald.stato', statoOra: 'cald.statoOra', coda: 'cald.coda',
+  sacchi: 'cald.sacchi', token: 'cald.token', tokenOra: 'cald.tokenOra', tokenCod: 'cald.tokenCod',
+  soloMiei: 'cald.soloMiei', vista: 'cald.vistaTurni', ieriVisto: 'cald.ieriVisto'
+};
+const ls = {
+  get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+let S = ls.get(K.stato);              // ultimo stato ricevuto dallo script
+let statoOra = ls.get(K.statoOra, 0); // quando è arrivato
+let pagina = 'oggi';
+let inCaricamento = false;
+let senzaRete = !navigator.onLine;
+let installPrompt = null;
+let erroreCodice = '';
+const ui = {
+  sacchi: Math.min(MAX_SACCHI, Math.max(1, ls.get(K.sacchi, 5))),
+  vista: ls.get(K.vista, 'elenco'),
+  soloMiei: ls.get(K.soloMiei, false),
+  passate: false,
+  mese: null,
+  anteprima: null,
+  ind: { dal: '', al: '', nota: '' }
+};
+
+/* ---------- utilità ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const p2 = n => (n < 10 ? '0' : '') + n;
+const GG = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+const GGL = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+const MM = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const MML = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+const dk = k => { const [y, m, d] = String(k).split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const kd = d => d.toISOString().slice(0, 10);
+const addG = (k, n) => { const d = dk(k); d.setUTCDate(d.getUTCDate() + n); return kd(d); };
+const diffG = (a, b) => Math.round((dk(b) - dk(a)) / 864e5);
+const chiaveLocale = d => d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+const oraLocale = d => p2(d.getHours()) + ':' + p2(d.getMinutes());
+const oggiK = () => chiaveLocale(new Date());
+function fmtG(k, conGiorno = true) { const d = dk(k); return (conGiorno ? GG[d.getUTCDay()] + ' ' : '') + d.getUTCDate() + ' ' + MM[d.getUTCMonth()]; }
+function fmtSett(dal, al) {
+  const a = dk(dal), b = dk(al);
+  return a.getUTCMonth() === b.getUTCMonth()
+    ? a.getUTCDate() + '–' + b.getUTCDate() + ' ' + MM[b.getUTCMonth()]
+    : a.getUTCDate() + ' ' + MM[a.getUTCMonth()] + ' – ' + b.getUTCDate() + ' ' + MM[b.getUTCMonth()];
+}
+function traQuanto(giorni) {
+  if (giorni <= 0) return 'adesso';
+  if (giorni === 1) return 'domani';
+  if (giorni < 7) return 'tra ' + giorni + ' giorni';
+  const s = Math.round(giorni / 7);
+  return s === 1 ? 'tra una settimana' : 'tra ' + s + ' settimane';
+}
+function quandoFa(ms) {
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 1) return 'adesso';
+  if (m < 60) return m + ' min fa';
+  const d = new Date(ms);
+  return chiaveLocale(d) === oggiK() ? 'oggi alle ' + oraLocale(d) : fmtG(chiaveLocale(d)) + ' alle ' + oraLocale(d);
+}
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2));
+const sacchiTesto = n => n + (Math.abs(n) === 1 ? ' sacco' : ' sacchi');
+const colore = nome => ((S && S.appartamenti || []).find(a => a.nome === nome) || {}).colore || '#888888';
+const isMio = app => S && S.io && app === S.io.appartamento;
+const codice = () => ls.get(K.codice, '');
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+/* ---------- messaggi e finestre ---------- */
+function toast(testo, tipo = '', durata = 3500) {
+  $('#toast').innerHTML = '';   // un messaggio alla volta
+  const el = document.createElement('div');
+  el.className = 'toast ' + tipo;
+  el.textContent = testo;
+  $('#toast').appendChild(el);
+  setTimeout(() => el.remove(), durata);
+}
+/* Finestra di conferma. Può contenere gruppi di pulsanti a scelta
+ * (data-gruppo / data-valore) e campi (data-campo): alla conferma restituisce
+ * i valori scelti; "valida" può rifiutarli con un messaggio. */
+function chiedi({ titolo, testo = '', si = 'Conferma', no = 'Annulla', pericolo = false, html = '', valida = null }) {
+  return new Promise(ok => {
+    const m = $('#modale');
+    m.innerHTML = `<div class="velo"><div class="finestra" role="dialog" aria-modal="true">
+      <h2>${esc(titolo)}</h2>${testo ? `<p>${esc(testo)}</p>` : ''}${html}
+      ${valida ? '<div class="errore-finestra" id="erroreFinestra"></div>' : ''}
+      <div class="btns"><button class="btn" data-r="0">${esc(no)}</button>
+      <button class="btn ${pericolo ? 'pericolo' : 'primario'}" data-r="1">${esc(si)}</button></div></div></div>`;
+    const chiudi = r => { m.innerHTML = ''; ok(r); };
+    const valori = () => {
+      const o = {};
+      m.querySelectorAll('[data-gruppo]').forEach(g => { const b = g.querySelector('[aria-pressed="true"]'); if (b) o[g.dataset.gruppo] = b.dataset.valore; });
+      m.querySelectorAll('[data-campo]').forEach(i => { o[i.dataset.campo] = i.value; });
+      return o;
+    };
+    m.querySelector('.velo').addEventListener('click', e => {
+      const v = e.target.closest('[data-valore]');
+      if (v) {
+        const g = v.closest('[data-gruppo]') || m;
+        g.querySelectorAll('[data-valore]').forEach(x => x.setAttribute('aria-pressed', String(x === v)));
+        return;
+      }
+      const b = e.target.closest('[data-r]');
+      if (b && b.dataset.r === '1') {
+        const o = valori();
+        const errore = valida ? valida(o) : '';
+        if (errore) { $('#erroreFinestra').textContent = errore; return; }
+        chiudi(Object.keys(o).length ? o : true);
+      } else if (b) chiudi(false);
+      else if (e.target.classList.contains('velo')) chiudi(false);
+    });
+    const primo = m.querySelector('input[autofocus]');
+    if (primo) setTimeout(() => primo.focus(), 50);
+  });
+}
+function attesa(on, testo = 'Un momento…') {
+  let el = $('#attesa');
+  if (on && !el) {
+    el = document.createElement('div'); el.id = 'attesa'; el.className = 'attesa-velo';
+    el.innerHTML = `<div><span class="rotella"></span>${esc(testo)}</div>`;
+    document.body.appendChild(el);
+  } else if (!on && el) el.remove();
+}
+
+/* =====================================================================
+ *  COLLEGAMENTO CON LO SCRIPT
+ * ===================================================================== */
+async function chiama(url, init = {}) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000);
+  let r, testo;
+  try {
+    r = await fetch(url, { ...init, signal: ctrl.signal, redirect: 'follow', cache: 'no-store' });
+    testo = await r.text();
+  } catch (e) {
+    const err = new Error('Nessuna connessione'); err.rete = true; throw err;
+  } finally { clearTimeout(timer); }
+  try { return JSON.parse(testo); }
+  catch (e) {
+    const err = new Error(r.ok ? 'Lo script ha risposto in modo strano. Avvisa Francesco.' : 'Errore del server (' + r.status + '). Riprova tra poco.');
+    err.rete = !r.ok; throw err;
+  }
+}
+const apiStato = c => chiama(API + '?codice=' + encodeURIComponent(c) + '&t=' + Date.now());
+const apiAzione = (c, azione, params = {}) => chiama(API, {
+  method: 'POST',
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita il controllo CORS preliminare
+  body: JSON.stringify({ ...params, codice: c, azione })
+});
+
+function impostaStato(r) {
+  S = r; statoOra = Date.now();
+  ls.set(K.stato, r); ls.set(K.statoOra, statoOra);
+}
+function codiceNonValido(msg) {
+  return /codice personale/i.test(msg || '');
+}
+function mostraErrore(msg) {
+  if (codiceNonValido(msg)) {
+    erroreCodice = 'Questo collegamento non è più valido. Chiedi a Francesco il tuo link personale.';
+    ls.del(K.codice); S = null; ls.del(K.stato);
+    disegna();
+  } else toast(msg || 'Errore', 'errore', 5000);
+}
+
+async function aggiorna({ silenzioso = false } = {}) {
+  const c = codice();
+  if (!c || inCaricamento) return;
+  inCaricamento = true; disegnaTestata();
+  try {
+    const inviati = await svuotaCoda();
+    if (!inviati || !S) {
+      const r = await apiStato(c);
+      if (r.ok) impostaStato(r); else mostraErrore(r.errore);
+    }
+    senzaRete = false;
+  } catch (e) {
+    senzaRete = !!e.rete;
+    if (!silenzioso) toast(e.rete ? 'Niente campo: ti mostro gli ultimi dati salvati.' : e.message, e.rete ? 'avviso' : 'errore', 4500);
+  } finally {
+    inCaricamento = false;
+    disegna();
+  }
+}
+
+/* Azioni che servono subito (turni, ferie, impostazioni): richiedono la rete */
+async function azioneOnline(azione, params, msgOk) {
+  attesa(true);
+  try {
+    const r = await apiAzione(codice(), azione, params);
+    if (!r.ok) { mostraErrore(r.errore); return null; }
+    if (r.io) impostaStato(r);
+    senzaRete = false;
+    if (msgOk) toast(msgOk, 'ok');
+    return r;
+  } catch (e) {
+    if (e.rete) { senzaRete = true; toast('Per questa operazione serve internet. Riprova quando hai campo.', 'avviso', 5000); }
+    else toast(e.message, 'errore', 5000);
+    return null;
+  } finally { attesa(false); disegna(); }
+}
+
+/* =====================================================================
+ *  CODA DEI CARICHI (funziona anche senza campo)
+ *  Ogni carico ha un identificativo: se arriva due volte, lo script
+ *  lo registra una volta sola.
+ * ===================================================================== */
+const coda = () => ls.get(K.coda, []);
+const salvaCoda = q => ls.set(K.coda, q);
+let svuotando = null;
+
+function accoda(op) {
+  salvaCoda(coda().concat([op]));
+  disegna();
+  return svuotaCoda();
+}
+function svuotaCoda() {
+  if (svuotando) return svuotando;
+  svuotando = (async () => {
+    let inviati = 0;
+    for (;;) {
+      const q = coda();
+      if (!q.length) break;
+      const op = q[0];
+      const params = { id: op.id, quando: op.quando };
+      if (op.sacchi != null) params.sacchi = op.sacchi;   // carico e conta
+      if (op.nota) params.nota = op.nota;
+      let r;
+      try { r = await apiAzione(op.codice, op.azione, params); }
+      catch (e) { if (e.rete) senzaRete = true; break; }
+      if (!r.ok) {
+        // problemi passeggeri: si riprova più tardi
+        if (/lock|timeout|tempo|riprova|servizio|service|quota|codice/i.test(r.errore || '')) break;
+        toast('Non registrato (' + (op.azione === 'carico' ? sacchiTesto(op.sacchi) + ' alle ' + oraLocale(new Date(op.quando)) : 'pallet') + '): ' + r.errore, 'errore', 7000);
+      } else {
+        inviati++;
+        senzaRete = false;
+        if (op.codice === codice() && r.io) impostaStato(r);
+      }
+      salvaCoda(coda().filter(o => o.id !== op.id));
+    }
+    return inviati;
+  })().finally(() => { svuotando = null; disegna(); });
+  return svuotando;
+}
+
+/* Stato "come sarà": quello del server più i carichi ancora in coda */
+function vista() {
+  if (!S) return null;
+  const v = JSON.parse(JSON.stringify(S));
+  const oggi = oggiK();
+  if (v.oggi !== oggi) v.carichiOggi = [];   // dati di un altro giorno
+  const q = coda().filter(o => o.codice === codice()).sort((a, b) => a.quando.localeCompare(b.quando));
+  for (const o of q) {
+    if (o.azione === 'carico') {
+      v.sacchi.locale -= o.sacchi;
+      const d = new Date(o.quando);
+      if (chiaveLocale(d) === oggi) v.carichiOggi.push({ ora: oraLocale(d), persona: o.chi, sacchi: o.sacchi, attesa: true, opId: o.id });
+    } else if (o.azione === 'sbancalato') {
+      v.sacchi.locale += v.sacchiPerPallet || 70;
+      v.sacchi.pallet -= 1;
+    } else if (o.azione === 'conta') {
+      v.sacchi.locale = o.sacchi;
+    }
+  }
+  if (v.sacchi.media > 0) v.sacchi.giorniRestanti = Math.round(v.sacchi.locale / v.sacchi.media * 10) / 10;
+  v.carichiOggi.sort((a, b) => a.ora.localeCompare(b.ora));
+  return v;
+}
+const turnoDel = (turni, k) => (turni || []).find(t => t.dal <= k && t.al >= k) || null;
+const prossimoMio = v => (v.turni || []).find(t => isMio(t.appartamento) && t.al >= oggiK()) || null;
+
+/* =====================================================================
+ *  NOTIFICHE (Firebase Cloud Messaging)
+ * ===================================================================== */
+let fb = null;
+async function caricaFirebase() {
+  if (fb) return fb;
+  const [app, m] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-messaging.js')]);
+  if (!(await m.isSupported())) throw new Error('Questo browser non supporta le notifiche. Apri l\'app con Chrome.');
+  const messaging = m.getMessaging(app.initializeApp(firebaseConfig));
+  // App aperta: la notifica arriva qui invece che nella tendina
+  m.onMessage(messaging, async p => {
+    const titolo = (p.notification && p.notification.title) || (p.data && p.data.titolo) || 'Caldaia';
+    const testo = (p.notification && p.notification.body) || (p.data && p.data.testo) || '';
+    toast(titolo + ': ' + testo, '', 7000);
+    try { (await navigator.serviceWorker.ready).showNotification(titolo, { body: testo, icon: 'icona-192.png', badge: 'icona-192.png' }); } catch (e) {}
+    aggiorna({ silenzioso: true });
+  });
+  fb = { m, messaging };
+  return fb;
+}
+function statoNotifiche() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return 'no';
+  if (Notification.permission === 'granted') return ls.get(K.token) && ls.get(K.tokenCod) === codice() ? 'attive' : 'da-registrare';
+  return Notification.permission; // default | denied
+}
+async function attivaNotifiche({ chiedendo = false, forza = false } = {}) {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) throw new Error('Questo browser non supporta le notifiche. Apri l\'app con Chrome.');
+  let perm = Notification.permission;
+  if (perm === 'default' && chiedendo) perm = await Notification.requestPermission();
+  if (perm !== 'granted') return perm;
+  const reg = await navigator.serviceWorker.ready;
+  const { m, messaging } = await caricaFirebase();
+  const token = await m.getToken(messaging, { vapidKey: VAPID, serviceWorkerRegistration: reg });
+  if (!token) throw new Error('Firebase non ha dato il permesso. Riprova.');
+  const scaduto = Date.now() - ls.get(K.tokenOra, 0) > 7 * 864e5;
+  if (forza || scaduto || token !== ls.get(K.token) || ls.get(K.tokenCod) !== codice()) {
+    const r = await apiAzione(codice(), 'registraNotifiche', { token });
+    if (!r.ok) throw new Error(r.errore);
+    ls.set(K.token, token); ls.set(K.tokenOra, Date.now()); ls.set(K.tokenCod, codice());
+  }
+  return 'granted';
+}
+async function bottoneNotifiche() {
+  attesa(true, 'Attivo le notifiche…');
+  try {
+    const r = await attivaNotifiche({ chiedendo: true, forza: true });
+    if (r === 'granted') toast('Notifiche attive ✓', 'ok');
+    else if (r === 'denied') toast('Le notifiche sono bloccate: guarda le istruzioni nelle Impostazioni.', 'avviso', 6000);
+  } catch (e) {
+    toast(e.message && !/fetch|network/i.test(e.message) ? e.message : 'Serve internet per attivare le notifiche.', 'errore', 6000);
+  } finally { attesa(false); disegna(); }
+}
+
+/* =====================================================================
+ *  DISEGNO DELLE PAGINE
+ * ===================================================================== */
+function disegnaTestata() {
+  const el = $('#statoRete');
+  const n = coda().length;
+  el.className = 'stato-rete';
+  if (n) { el.textContent = n + ' da inviare'; el.classList.add('attesa'); }
+  else if (senzaRete) { el.textContent = 'senza campo'; el.classList.add('offline'); }
+  else el.classList.add('nascosto');
+  $('#btnAggiorna').classList.toggle('gira', inCaricamento);
+  document.querySelectorAll('#nav button').forEach(b => b.setAttribute('aria-current', b.dataset.p === pagina ? 'page' : 'false'));
+  $('#nav').classList.toggle('nascosto', !S);
+}
+
+function disegna() {
+  disegnaTestata();
+  const main = $('#pagina');
+  if (!codice()) { main.innerHTML = paginaCodice(); return; }
+  if (!S) {
+    main.innerHTML = `<div class="vuoto"><img src="icona-192.png" alt=""><h2 style="margin-top:14px">Carico i dati…</h2>
+      <p class="tenue">${senzaRete ? 'Serve internet la prima volta che apri l\'app.' : 'Un attimo.'}</p>
+      ${senzaRete ? '<button class="btn primario" data-az="aggiorna">Riprova</button>' : ''}</div>`;
+    return;
+  }
+  const v = vista();
+  const f = { oggi: paginaOggi, turni: paginaTurni, pellet: paginaPellet, caldaia: paginaCaldaia, impostazioni: paginaImpostazioni }[pagina] || paginaOggi;
+  main.innerHTML = f(v);
+}
+
+/* ---------- avvisi comuni ---------- */
+function bannerDati() {
+  let h = '';
+  if (S && !S.caldaiaAccesa) h += `<div class="banner info"><span>☀️</span><div class="testo"><b>Caldaia spenta per la stagione</b>Turni e promemoria sono fermi.</div></div>`;
+  const vecchio = Date.now() - statoOra > 15 * 60000;
+  if (senzaRete && vecchio) h += `<div class="banner avviso"><span>📶</span><div class="testo"><b>Senza campo</b>Dati aggiornati ${esc(quandoFa(statoOra))}. I carichi vengono salvati e partono da soli.</div></div>`;
+  return h;
+}
+
+/* ---------- OGGI ---------- */
+function paginaOggi(v) {
+  const oggi = oggiK();
+  const corrente = turnoDel(v.turni, oggi);
+  const primo = (v.turni || [])[0];
+  let h = bannerDati();
+
+  // Turno della settimana
+  if (corrente) {
+    h += `<section class="turno-ora" style="--c:${esc(colore(corrente.appartamento))}">
+      <div class="etichetta">Di turno questa settimana</div>
+      <div class="nome">${esc(corrente.appartamento)}</div>
+      <div class="date">${esc(fmtG(corrente.dal))} – ${esc(fmtG(corrente.al))}</div>
+      ${corrente.nota ? `<div class="date">${esc(corrente.nota)}</div>` : ''}
+      ${isMio(corrente.appartamento) ? '<span class="tuo">Tocca a te</span>' : ''}</section>`;
+  } else if (primo && primo.dal > oggi) {
+    // prima dell'inizio: carica già chi ha il primo turno
+    h += `<section class="turno-ora" style="--c:${esc(colore(primo.appartamento))}">
+      <div class="etichetta">Di turno adesso</div>
+      <div class="nome">${esc(primo.appartamento)}</div>
+      <div class="date">fino a ${esc(fmtG(primo.al))} · i turni partono ${esc(GGL[dk(primo.dal).getUTCDay()])} ${esc(fmtG(primo.dal, false))}</div>
+      ${isMio(primo.appartamento) ? '<span class="tuo">Tocca a te</span>' : ''}</section>`;
+  }
+
+  // Richieste di sostituzione degli altri
+  for (const s of v.scambi || []) {
+    if (isMio(s.appartamento)) continue;
+    h += `<div class="banner avviso"><span>🔁</span><div class="testo"><b>${esc(s.richiestoDa)} cerca un sostituto</b>
+      Settimana ${esc(fmtSett(s.dal, s.al))}${s.richiestoDa !== s.appartamento ? ' (turno di ' + esc(s.appartamento) + ')' : ''}.
+      <div class="btns"><button class="btn piccolo primario" data-az="scambioAccetta" data-id="${esc(s.id)}">Lo faccio io</button></div></div></div>`;
+  }
+
+  // Carico
+  const carichi = v.carichiOggi || [];
+  const totale = carichi.reduce((a, c) => a + Number(c.sacchi || 0), 0);
+  h += `<section class="scheda">
+    <h2>Quanti sacchi hai caricato?</h2>
+    <div class="scelta" role="group" aria-label="Numero di sacchi">
+      ${[1, 2, 3, 4, 5, 6].map(n => `<button data-az="sacchi" data-n="${n}" aria-pressed="${n === ui.sacchi}">${n}</button>`).join('')}
+    </div>
+    <button class="btn primario grande" data-az="carica">Ho caricato ${esc(sacchiTesto(ui.sacchi))}</button>
+    <button class="link-btn" data-az="dimenticato">Ho dimenticato di registrare un carico</button>
+    <h3>Oggi ${totale ? `<span class="tenue">· ${esc(sacchiTesto(totale))}</span>` : ''}</h3>
+    ${carichi.length ? `<ul class="lista">${carichi.map(rigaCarico).join('')}</ul>`
+      : '<p class="tenue">Nessun carico registrato oggi.</p>'}
+  </section>`;
+  h += avvisoIeri(v);
+
+  // Sacchi nel locale
+  h += schedaSerbatoio(v, true);
+
+  // Il mio prossimo turno
+  const mio = prossimoMio(v);
+  const giaInAlto = (corrente && isMio(corrente.appartamento)) || (!corrente && primo && mio && mio.dal === primo.dal);
+  if (mio && !giaInAlto) {
+    h += `<section class="scheda riga"><span style="font-size:1.6rem">📅</span><div class="cresce" style="flex:1">
+      <div class="tenue piccolo">Il tuo prossimo turno</div><b>${esc(fmtSett(mio.dal, mio.al))}</b>, ${esc(traQuanto(diffG(oggi, mio.dal)))}
+      ${mio.stato === 'previsto' ? ' <span class="etic">previsto</span>' : ''}</div>
+      <button class="btn piccolo" data-az="vai" data-p="turni">Turni</button></section>`;
+  }
+
+  h += bannerNotifiche() + bannerInstalla();
+  return h;
+}
+
+function rigaCarico(c) {
+  return `<li><span class="ora">${esc(c.ora)}</span>
+    <span class="cresce">${esc(c.persona)}${c.attesa ? '<br><span class="etic attesa">da inviare</span>' : ''}</span><b>${esc(sacchiTesto(c.sacchi))}</b>
+    ${c.attesa ? `<button class="btn mini pericolo" data-az="annullaCoda" data-id="${esc(c.opId)}">Annulla</button>` : ''}
+    ${c.annullabile ? `<button class="btn mini pericolo" data-az="annullaCarico" data-id="${esc(c.id)}" data-n="${esc(c.sacchi)}" data-ora="${esc(c.ora)}">Annulla</button>` : ''}</li>`;
+}
+
+/* "Ieri non risulta nessun carico": compare solo quando lo storico è già più
+ * vecchio di ieri, a stagione accesa, e finché qualcuno non risponde. */
+function avvisoIeri(v) {
+  if (!v.caldaiaAccesa || v.oggi !== oggiK()) return '';
+  const ieri = addG(oggiK(), -1);
+  if (ls.get(K.ieriVisto) === ieri) return '';
+  const mov = v.ultimiMovimenti || [];
+  if (!mov.some(m => m.giorno < ieri)) return '';
+  const caricato = mov.some(m => m.tipo === 'CARICO' && m.giorno === ieri) ||
+    coda().some(o => o.azione === 'carico' && chiaveLocale(new Date(o.quando)) === ieri);
+  if (caricato) return '';
+  return `<div class="banner avviso"><span>❓</span><div class="testo"><b>Ieri non risulta nessun carico</b>
+    ${esc(GGL[dk(ieri).getUTCDay()])} ${esc(fmtG(ieri, false))}. Se qualcuno ha caricato, registralo adesso.
+    <div class="btns"><button class="btn piccolo" data-az="ieriVisto">Nessuno ha caricato</button>
+    <button class="btn piccolo primario" data-az="dimenticato" data-g="1">Registra il carico</button></div></div></div>`;
+}
+
+function schedaSerbatoio(v, conLink) {
+  const s = v.sacchi;
+  const perc = Math.max(0, Math.min(100, s.locale / CAPIENZA_LOCALE * 100));
+  const giorni = s.giorniRestanti;
+  const cls = giorni != null && giorni <= 3 ? 'critico' : giorni != null && giorni <= 6 ? 'basso' : '';
+  return `<section class="scheda">
+    <div class="riga spazio"><h2 style="margin:0">Sacchi nel locale</h2>
+    ${conLink ? '<button class="btn piccolo" data-az="vai" data-p="pellet">Dettagli</button>' : ''}</div>
+    <div class="serbatoio ${cls}" role="img" aria-label="${esc(s.locale)} sacchi su ${CAPIENZA_LOCALE}"><div style="width:${perc}%"></div></div>
+    <p style="font-size:1.1rem">Restano <b>${esc(sacchiTesto(s.locale))}</b>${giorni != null ? `, circa <b>${esc(Math.max(0, Math.floor(giorni)))} giorni</b>` : ''}.</p>
+    ${cls === 'critico' ? `<p style="color:var(--errore);font-weight:650">Bisogna organizzarsi per sbancalare un pallet.</p>` : ''}
+  </section>`;
+}
+
+function bannerNotifiche() {
+  const st = statoNotifiche();
+  if (st === 'attive' || st === 'no') return '';
+  if (st === 'denied') return `<div class="banner errore"><span>🔕</span><div class="testo"><b>Notifiche bloccate</b>
+    Così non ricevi i promemoria. <a href="#" data-az="vai" data-p="impostazioni">Come sbloccarle</a></div></div>`;
+  return `<div class="banner info"><span>🔔</span><div class="testo"><b>Attiva le notifiche</b>Per ricevere i promemoria del turno e del carico.
+    <div class="btns"><button class="btn primario" data-az="notifiche">Attiva le notifiche</button></div></div></div>`;
+}
+function bannerInstalla() {
+  if (standalone()) return '';
+  return `<div class="banner info"><span>📲</span><div class="testo"><b>Metti l'app sulla schermata Home</b>
+    ${installPrompt ? 'Un tocco e avrai l\'icona come le altre app.' : 'Tocca il menu ⋮ in alto a destra di Chrome, poi «Installa app» oppure «Aggiungi a schermata Home».'}
+    ${installPrompt ? '<div class="btns"><button class="btn primario" data-az="installa">Installa</button></div>' : ''}</div></div>`;
+}
+
+/* ---------- TURNI ---------- */
+function paginaTurni(v) {
+  const oggi = oggiK();
+  const corrente = turnoDel(v.turni, oggi);
+  const mio = prossimoMio(v);
+  let h = bannerDati();
+
+  // in alto: il mio turno
+  if (mio) {
+    const ora = mio.dal <= oggi;
+    h += `<section class="scheda" style="border-left:8px solid ${esc(colore(mio.appartamento))}">
+      <div class="tenue piccolo">${ora ? 'Sei di turno adesso' : 'Il tuo prossimo turno'}</div>
+      <div style="font-size:1.35rem;font-weight:800">${esc(fmtSett(mio.dal, mio.al))}</div>
+      <div class="tenue">${ora ? 'fino a ' + esc(GGL[dk(mio.al).getUTCDay()]) + ' ' + esc(fmtG(mio.al, false)) : esc(traQuanto(diffG(oggi, mio.dal)))}
+      ${mio.stato === 'previsto' ? ' · previsto, può ancora cambiare' : ''}</div></section>`;
+  }
+
+  // richieste aperte
+  const scambi = v.scambi || [];
+  if (scambi.length) {
+    h += `<section class="scheda"><h2>Richieste di sostituzione</h2><ul class="lista">${scambi.map(s => `<li><div class="cresce">
+      <b>${esc(fmtSett(s.dal, s.al))}</b> · <span class="pill" style="--c:${esc(colore(s.appartamento))}">${esc(s.appartamento)}</span>
+      <div class="tenue piccolo">chiesta da ${esc(s.richiestoDa)}</div></div>
+      ${isMio(s.appartamento)
+        ? `<button class="btn piccolo pericolo" data-az="scambioAnnulla" data-id="${esc(s.id)}">Annulla</button>`
+        : `<button class="btn piccolo primario" data-az="scambioAccetta" data-id="${esc(s.id)}">Lo faccio io</button>`}</li>`).join('')}</ul></section>`;
+  }
+
+  // calendario
+  h += `<section class="scheda">
+    <div class="selettore" role="group">
+      <button data-az="vista" data-v="elenco" aria-pressed="${ui.vista === 'elenco'}">Elenco</button>
+      <button data-az="vista" data-v="mese" aria-pressed="${ui.vista === 'mese'}">Mese</button>
+    </div>
+    <label class="spunta"><input type="checkbox" data-az="soloMiei" ${ui.soloMiei ? 'checked' : ''}> Solo i miei turni</label>
+    ${ui.vista === 'mese' ? vistaMese(v) : vistaElenco(v, corrente)}
+  </section>`;
+
+  h += sezioneIndisponibilita(v);
+  return h;
+}
+
+function vistaElenco(v, corrente) {
+  const oggi = oggiK();
+  const aperti = new Set((v.scambi || []).map(s => s.dal));
+  let turni = (v.turni || []).filter(t => ui.passate || t.al >= oggi);
+  if (ui.soloMiei) turni = turni.filter(t => isMio(t.appartamento));
+  const passate = (v.turni || []).some(t => t.al < oggi);
+  let h = turni.length ? '' : '<p class="tenue">Nessuna settimana da mostrare.</p>';
+  h += '<div>' + turni.map(t => {
+    const cls = ['settimana', t.stato === 'previsto' ? 'previsto' : '', corrente && t.dal === corrente.dal ? 'corrente' : '', t.al < oggi ? 'passata' : ''].join(' ');
+    const puoChiedere = isMio(t.appartamento) && t.stato === 'confermato' && t.al >= oggi && !aperti.has(t.dal);
+    return `<div class="${cls}" style="--c:${esc(colore(t.appartamento))}">
+      <div class="barra"></div><div class="corpo">
+        <div class="riga spazio"><span class="quando">${esc(fmtG(t.dal))} – ${esc(fmtG(t.al))}</span>
+        ${t.stato === 'previsto' ? '<span class="etic">previsto</span>' : '<span class="etic">🔒 confermato</span>'}</div>
+        <div class="chi"><span class="pill">${esc(t.appartamento)}</span>${isMio(t.appartamento) ? ' <b>· tu</b>' : ''}</div>
+        ${t.nota ? `<div class="tenue piccolo">${esc(t.nota)}</div>` : ''}
+        ${aperti.has(t.dal) ? '<div class="piccolo" style="color:var(--avviso);font-weight:650">Sostituzione richiesta</div>' : ''}
+        ${puoChiedere ? `<div class="azioni"><button class="btn piccolo" data-az="scambioChiedi" data-dal="${esc(t.dal)}">Chiedi sostituzione</button></div>` : ''}
+      </div></div>`;
+  }).join('') + '</div>';
+  if (passate) h += `<button class="btn piccolo" style="margin-top:10px" data-az="passate">${ui.passate ? 'Nascondi le settimane passate' : 'Mostra le settimane passate'}</button>`;
+  h += `<p class="tenue piccolo" style="margin-top:12px">🔒 Le settimane confermate cambiano solo con una sostituzione. Quelle previste possono spostarsi se qualcuno segna un'assenza: in quel caso arriva una notifica.</p>`;
+  return h;
+}
+
+function vistaMese(v) {
+  const oggi = oggiK();
+  if (!ui.mese) ui.mese = oggi.slice(0, 7);
+  const [y, m] = ui.mese.split('-').map(Number);
+  const primo = `${y}-${p2(m)}-01`;
+  const inizio = addG(primo, -dk(primo).getUTCDay()); // domenica: ogni riga è un turno
+  let celle = '';
+  for (let i = 0; i < 42; i++) {
+    const k = addG(inizio, i);
+    if (i % 7 === 0 && i > 0 && k.slice(0, 7) !== ui.mese) break;
+    const t = turnoDel(v.turni, k);
+    const mostra = t && (!ui.soloMiei || isMio(t.appartamento));
+    const c = mostra ? colore(t.appartamento) : '';
+    const alfa = t && t.stato === 'previsto' ? '30' : '66';
+    const stile = mostra ? `background:${c}${alfa};border-bottom:4px solid ${c}` : '';
+    const nome = mostra && dk(k).getUTCDay() === 0 ? `<small>${esc(t.appartamento)}</small>` : '';
+    celle += `<div class="g ${k.slice(0, 7) !== ui.mese ? 'fuori' : ''} ${k === oggi ? 'oggi' : ''}" style="${stile}">${dk(k).getUTCDate()}${nome}</div>`;
+  }
+  return `<div class="mese-testa">
+      <button class="btn piccolo" data-az="mese" data-d="-1" aria-label="Mese precedente">‹</button>
+      <b>${MML[m - 1]} ${y}</b>
+      <button class="btn piccolo" data-az="mese" data-d="1" aria-label="Mese successivo">›</button></div>
+    <div class="calendario">${['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'].map(g => `<div class="gs">${g}</div>`).join('')}${celle}</div>
+    <div class="legenda">${(v.appartamenti || []).map(a => `<span class="pill" style="--c:${esc(a.colore)}">${esc(a.nome)}</span>`).join('')}</div>
+    <p class="tenue piccolo">Ogni riga è una settimana di turno, da domenica a sabato. Colori pieni: confermate. Colori tenui: previste.</p>`;
+}
+
+function sezioneIndisponibilita(v) {
+  const oggi = oggiK();
+  const lista = (v.indisponibilita || []).slice().sort((a, b) => a.dal.localeCompare(b.dal));
+  const a = ui.anteprima;
+  return `<section class="scheda" id="assenze">
+    <h2>Quando non ci siete</h2>
+    <p class="tenue piccolo">Segna i giorni in cui il tuo appartamento è via: il calendario eviterà di darvi il turno. Prima di salvare vedi cosa cambierebbe.</p>
+    ${lista.length ? `<ul class="lista">${lista.map(i => `<li><div class="cresce">
+      <span class="pill" style="--c:${esc(colore(i.appartamento))}">${esc(i.appartamento)}</span>
+      <b>${i.dal === i.al ? esc(fmtG(i.dal)) : esc(fmtG(i.dal)) + ' – ' + esc(fmtG(i.al))}</b>
+      ${i.nota ? `<div class="tenue piccolo">${esc(i.nota)}</div>` : ''}</div>
+      ${isMio(i.appartamento) || (S.io && S.io.admin) ? `<button class="btn piccolo pericolo" data-az="indispRimuovi" data-id="${esc(i.id)}" aria-label="Togli">Togli</button>` : ''}</li>`).join('')}</ul>`
+      : '<p class="tenue">Nessuna assenza segnata.</p>'}
+    <h3>Aggiungi un periodo per ${esc(S.io.appartamento)}</h3>
+    <div class="campi2">
+      <label class="campo"><span>Dal</span><input type="date" id="indDal" min="${oggi}" value="${esc(ui.ind.dal)}"></label>
+      <label class="campo"><span>Al</span><input type="date" id="indAl" min="${oggi}" value="${esc(ui.ind.al)}"></label>
+    </div>
+    <label class="campo"><span>Nota (facoltativa)</span><input type="text" id="indNota" maxlength="60" placeholder="Es. ferie" value="${esc(ui.ind.nota)}"></label>
+    ${a ? `<div class="banner ${a.cambi.length || a.avvisi.length ? 'avviso' : 'ok'}"><div class="testo">
+        <b>Cosa cambierebbe</b>
+        ${a.messaggio ? `<p>${esc(a.messaggio)}</p>` : ''}
+        ${a.cambi.map(c => `<p>• ${esc(c)}</p>`).join('')}
+        ${a.avvisi.map(c => `<p>⚠️ ${esc(c)}</p>`).join('')}
+        <div class="btns"><button class="btn" data-az="indispAnnulla">Annulla</button>
+        <button class="btn primario" data-az="indispConferma">Conferma</button></div></div></div>`
+      : '<button class="btn primario" data-az="indispAnteprima">Controlla cosa cambia</button>'}
+  </section>`;
+}
+
+/* ---------- PELLET ---------- */
+function paginaPellet(v) {
+  const s = v.sacchi;
+  const perPallet = v.sacchiPerPallet || 70;
+  const fuori = Math.max(0, s.pallet) * perPallet;
+  const totGiorni = s.media > 0 ? Math.floor((s.locale + fuori) / s.media) : null;
+  let h = bannerDati() + schedaSerbatoio(v, false);
+  h += `<section class="scheda">
+    <div class="griglia2">
+      <div class="cella"><div class="tenue piccolo">Consumo medio</div><div class="val">${esc(String(s.media).replace('.', ','))}</div><div class="tenue piccolo">sacchi al giorno · ${esc(s.fonteMedia)}</div></div>
+      <div class="cella"><div class="tenue piccolo">Pallet fuori</div><div class="val">${esc(s.pallet)}</div><div class="tenue piccolo">${esc(fuori)} sacchi</div></div>
+    </div>
+    ${totGiorni != null ? `<p style="margin-top:12px">In tutto, locale più pallet: <b>${esc(s.locale + fuori)} sacchi</b>, circa <b>${esc(totGiorni)} giorni</b> al consumo attuale.</p>` : ''}
+  </section>
+  <section class="scheda">
+    <h2>Avete portato dentro un pallet?</h2>
+    <p class="tenue">Registralo quando i sacchi sono nel locale: ogni pallet aggiunge ${esc(perPallet)} sacchi.</p>
+    <button class="btn primario" data-az="sbancala">Pallet sbancalato</button>
+  </section>
+  <section class="scheda">
+    <h2>Conta i sacchi nel locale</h2>
+    <p class="tenue">Ogni tanto, per esempio quando ne restano pochi o prima di sbancalare, contate i sacchi e scrivete il numero vero. Così si correggono i carichi che qualcuno si è dimenticato di registrare.</p>
+    <button class="btn" data-az="conta">Ho contato i sacchi</button>
+  </section>`;
+
+  const mov = v.ultimiMovimenti || [];
+  const inCoda = coda().filter(o => o.codice === codice());
+  h += `<section class="scheda"><h2>Ultimi movimenti</h2>`;
+  if (!mov.length && !inCoda.length) h += '<p class="tenue">Ancora nessun movimento.</p>';
+  else {
+    let giorno = '';
+    h += '<ul class="lista">';
+    const descr = { carico: 'carico', CARICO: 'carico', sbancalato: 'pallet sbancalato', SBANCALATO: 'pallet sbancalato', conta: 'conta dei sacchi', CONTA: 'conta dei sacchi' };
+    const quanti = (tipo, n) => /carico/i.test(tipo) ? '−' + n : /conta/i.test(tipo) ? '= ' + n : '+' + n;
+    for (const o of inCoda.slice().reverse()) {
+      const d = new Date(o.quando);
+      h += `<li><span class="ora">${esc(oraLocale(d))}</span><span class="cresce">${esc(o.chi)} · ${esc(descr[o.azione])}
+        ${chiaveLocale(d) !== oggiK() ? `<span class="tenue piccolo">(${esc(fmtG(chiaveLocale(d)))})</span>` : ''}<br><span class="etic attesa">da inviare</span></span>
+        <b>${esc(quanti(o.azione, o.azione === 'sbancalato' ? perPallet : o.sacchi))}</b>
+        <button class="btn mini pericolo" data-az="annullaCoda" data-id="${esc(o.id)}">Annulla</button></li>`;
+    }
+    for (const m of mov) {
+      if (m.giorno !== giorno) { giorno = m.giorno; h += `<li style="border-top:0;padding-bottom:0"><b class="tenue piccolo" style="text-transform:uppercase;letter-spacing:.04em">${esc(m.giorno === oggiK() ? 'oggi' : fmtG(m.giorno))}</b></li>`; }
+      h += `<li><span class="ora">${esc(m.ora)}</span><span class="cresce">${esc(m.persona)} · ${esc(descr[m.tipo] || m.tipo)}</span>
+        <b>${esc(quanti(m.tipo, m.sacchi))}</b>
+        ${m.annullabile ? `<button class="btn mini pericolo" data-az="annullaCarico" data-id="${esc(m.id)}" data-n="${esc(m.sacchi)}" data-ora="${esc(m.ora)}">Annulla</button>` : ''}</li>`;
+    }
+    h += '</ul>';
+  }
+  h += '</section>';
+  return h;
+}
+
+/* ---------- CALDAIA (consultabile anche senza campo) ---------- */
+const STATI = [
+  ['OFF', 'Spenta.'],
+  ['Chec', 'Controllo iniziale dopo l\'accensione.'],
+  ['Acc', 'Accensione in corso: deve formarsi una bella fiamma nel braciere.'],
+  ['Stab', 'Stabilizzazione della fiamma.'],
+  ['rEc', 'Recupero dell\'accensione.'],
+  ['Mod', 'Modulazione: lavora regolando la potenza.'],
+  ['MAnt', 'Automantenimento: acqua arrivata in temperatura, la ventola si ferma e il fuoco resta al minimo. È normale.'],
+  ['Sic', 'Sicurezza.'],
+  ['SPE', 'Spegnimento in corso: la ventola brucia quello che resta nel braciere.'],
+  ['ALt', 'Spenta per un allarme. Si alterna con il codice dell\'allarme (vedi sotto).'],
+  ['LoAd', 'Caricamento manuale del pellet (tasto SET tenuto premuto a caldaia spenta).']
+];
+const ALLARMI = [
+  ['tSic', 'È scattato il termostato di sicurezza: l\'acqua ha superato 95 °C.', 'tu',
+    'Aspetta che la caldaia si raffreddi. Svita il coperchietto nero sul pannello comandi e premi il pulsante sotto. Se scatta di nuovo, non insistere: avvisa Francesco.'],
+  ['Cald', 'Acqua troppo calda.', 'fra', 'Avvisa Francesco. Può succedere se le pompe dei termosifoni sono ferme e il calore non viene smaltito.'],
+  ['Sic', 'Eccesso di temperatura dell\'acqua.', 'fra', 'Come «Cald»: avvisa Francesco.'],
+  ['Press', 'Errore di sicurezza del pressostato.', 'fra', 'Avvisa Francesco. Non provare a riaccendere più volte di fila.'],
+  ['Vent', 'Errore della ventola aspirazione fumi.', 'fra', 'Avvisa Francesco. Spesso c\'entra la pulizia della ventola.'],
+  ['AccF', 'La caldaia non è riuscita ad accendersi.', 'tu',
+    'Controlla che nella tramoggia ci sia pellet e che il braciere non sia pieno di cenere, con i fori liberi. Poi riaccendi. Se non riparte, avvisa Francesco.'],
+  ['SPAc', 'Spegnimento accidentale: il fuoco si è spento da solo.', 'tu',
+    'Controlla tramoggia (vuota?) e braciere (troppa cenere o «sassi» di pellet vetrificato). Pulisci il braciere e riaccendi. Se succede spesso, avvisa Francesco.'],
+  ['Sond', 'Le sonde di temperatura leggono valori sbagliati.', 'fra', 'Avvisa Francesco: serve un controllo.']
+];
+const PULIZIE = [
+  ['Ogni 3–4 giorni', 'Togliere la cenere dal fondo del braciere. Se ci sono «sassi» (cenere vetrificata), toglierli.'],
+  ['Ogni settimana', 'Aspirare la camera di combustione e scovolare le alette con la ventola accesa. Controllare che i fori del braciere siano liberi (spazzola d\'acciaio).'],
+  ['Ogni mese', 'Camera fumi dal portello in basso: a caldaia fredda e senza corrente.'],
+  ['Ogni 1–3 mesi', 'Pulizia della ventola aspirazione fumi (Francesco).'],
+  ['Ogni anno', 'Controllo delle coclee; controllo generale e libretto d\'impianto con il tecnico.'],
+  ['Fine stagione', 'Svuotare tramoggia e coclee, lasciare le porte socchiuse.']
+];
+const PROBLEMI = [
+  ['Premi ON e non si accende nulla', 'Controlla che arrivi corrente (interruttore generale acceso, spia rossa). Se è scattato il termostato di sicurezza, riarmalo (vedi tSic).'],
+  ['La coclea gira ma il pellet non arriva', 'Tramoggia vuota: caricala. Se è piena, potrebbe esserci qualcosa che blocca: avvisa Francesco.'],
+  ['Fiamma piccola, la caldaia non scalda', 'Spesso è troppa cenere nel braciere: puliscilo. Se continua, avvisa Francesco.'],
+  ['Si spegne da sola', 'Braciere pieno o fori ostruiti, pellet di cattiva qualità o coclea bloccata. Pulisci il braciere; poi avvisa Francesco.'],
+  ['«Sassi» nel braciere', 'È cenere vetrificata, dipende dalla qualità del pellet. Toglili durante la pulizia e dillo a Francesco.'],
+  ['Odore o fumo nel locale', 'Apri la porta per arieggiare, non restare dentro e avvisa subito Francesco.']
+];
+function paginaCaldaia() {
+  const codici = (l, conChi) => l.map(x => `<div class="codice"><code>${esc(x[0])}</code><div>${esc(x[1])}
+    ${conChi ? `<div class="chi-fa ${x[2]}">${x[2] === 'tu' ? '✔ Puoi provare tu' : '☎ Chiama Francesco'}</div><div class="piccolo">${esc(x[3])}</div>` : ''}</div></div>`).join('');
+  return `<section class="scheda">
+    <h2>Caldaia Ecofaber Alpina ALP45</h2>
+    <p class="tenue piccolo">Dal libretto della caldaia. Questa pagina funziona anche senza campo.</p>
+    <details open><summary>⚠️ Allarmi sul display</summary><div class="contenuto">
+      <p class="piccolo tenue">Con la caldaia in allarme il display alterna «ALt» e il codice. A caldaia spenta, i tasti + o − cancellano la scritta: se il problema c'è ancora, ricompare.</p>
+      ${codici(ALLARMI, true)}</div></details>
+    <details><summary>📟 Le scritte del display</summary><div class="contenuto">${codici(STATI, false)}</div></details>
+    <details><summary>🧹 Pulizie</summary><div class="contenuto">
+      <p class="piccolo"><b>Sempre:</b> guanti, mascherina, e mai pulire con la caldaia accesa usando prodotti infiammabili. Per camera fumi e ventola: caldaia fredda e interruttore su 0.</p>
+      <ul class="lista">${PULIZIE.map(p => `<li><div><b>${esc(p[0])}</b><div class="piccolo">${esc(p[1])}</div></div></li>`).join('')}</ul></div></details>
+    <details><summary>🔧 Se qualcosa non va</summary><div class="contenuto">
+      <ul class="lista">${PROBLEMI.map(p => `<li><div><b>${esc(p[0])}</b><div class="piccolo">${esc(p[1])}</div></div></li>`).join('')}</ul></div></details>
+    <details><summary>📋 Dati e contatti</summary><div class="contenuto">
+      <table class="dati">
+        <tr><td>Modello</td><td>Alpina ALP45 (P), 2014</td></tr>
+        <tr><td>Matricola</td><td>1U16790414</td></tr>
+        <tr><td>Potenza utile</td><td>14–38 kW</td></tr>
+        <tr><td>Acqua in caldaia</td><td>57 L, max 3 bar, max 95 °C</td></tr>
+        <tr><td>Tramoggia pellet</td><td>80 kg (circa 5 sacchi)</td></tr>
+        <tr><td>Pellet ammesso</td><td>Ø 6–8 mm, lungo max 30 mm</td></tr>
+        <tr><td>Termostato caldaia (A03)</td><td>70 °C di fabbrica</td></tr>
+      </table>
+      <h3>Ecofaber s.r.l. – Poggio Rusco (MN)</h3>
+      <p>Tel. <a href="tel:+390386740169">0386 740169</a> · <a href="mailto:info@ecofaber.com">info@ecofaber.com</a></p>
+      <p class="tenue piccolo">Per i ricambi dire sempre modello e matricola. Il menù protetto della centralina è solo per il tecnico.</p>
+    </div></details>
+  </section>`;
+}
+
+/* ---------- IMPOSTAZIONI ---------- */
+function paginaImpostazioni(v) {
+  const io = S.io;
+  const st = statoNotifiche();
+  const testoNotif = {
+    attive: '<span style="color:var(--ok);font-weight:700">✔ Attive su questo telefono</span>',
+    'da-registrare': 'Permesso dato, manca la registrazione.',
+    default: 'Non ancora attivate.',
+    denied: '<span style="color:var(--errore);font-weight:700">Bloccate</span>',
+    no: 'Questo browser non le supporta: apri l\'app con Chrome.'
+  }[st];
+  return `<section class="scheda">
+      <div class="tenue piccolo">Questo telefono è collegato a</div>
+      <div style="font-size:1.4rem;font-weight:800">${esc(io.nome)}</div>
+      <div>Appartamento <span class="pill" style="--c:${esc(colore(io.appartamento))}">${esc(io.appartamento)}</span>${io.admin ? ' · amministratore' : ''}</div>
+    </section>
+    <section class="scheda">
+      <h2>Notifiche</h2>
+      <p>${testoNotif}</p>
+      ${st === 'denied' ? `<div class="banner avviso"><div class="testo"><b>Come sbloccarle</b>
+        ${standalone()
+          ? 'Tieni premuta l\'icona «Caldaia» sulla schermata Home → «Info app» → «Notifiche» → attivale.'
+          : 'In Chrome tocca il lucchetto accanto all\'indirizzo → «Autorizzazioni» → «Notifiche» → «Consenti».'}
+        Poi torna qui e tocca «Riprova».</div></div>` : ''}
+      ${st !== 'no' ? `<button class="btn ${st === 'attive' ? '' : 'primario'}" data-az="notifiche">${st === 'attive' ? 'Ricollega le notifiche' : st === 'denied' ? 'Riprova' : 'Attiva le notifiche'}</button>` : ''}
+    </section>
+    <section class="scheda">
+      <h2>I miei promemoria</h2>
+      <label class="spunta"><input type="checkbox" id="prefProm" ${io.promemoria ? 'checked' : ''}> Promemoria del carico, la sera del mio turno</label>
+      <label class="campo"><span>A che ora</span><input type="time" id="prefOra" value="${esc(io.ora)}"></label>
+      <p class="tenue piccolo">Arriva solo se quel giorno nessuno ha ancora caricato.</p>
+      <label class="spunta"><input type="checkbox" id="prefPre" ${io.preavviso ? 'checked' : ''}> Avvisami prima che inizi il mio turno</label>
+      <label class="campo"><span>Quanti giorni prima</span><select id="prefGiorni">
+        ${[1, 2, 3, 4, 5, 6, 7].map(n => `<option value="${n}" ${n === Number(io.giorni) ? 'selected' : ''}>${n === 1 ? '1 giorno' : n + ' giorni'}</option>`).join('')}</select></label>
+      <button class="btn primario" data-az="preferenze">Salva</button>
+      <p class="tenue piccolo">Gli avvisi per tutta la casa (pellet in esaurimento, richieste di sostituzione) arrivano sempre.</p>
+    </section>
+    ${standalone() ? '' : `<section class="scheda"><h2>Installa l'app</h2>
+      ${installPrompt ? '<button class="btn primario" data-az="installa">Metti l\'icona sulla schermata Home</button>'
+        : '<p>In Chrome: menu ⋮ in alto a destra → «Installa app» oppure «Aggiungi a schermata Home».</p>'}</section>`}
+    <section class="scheda">
+      <h2>Informazioni</h2>
+      <table class="dati">
+        <tr><td>Dati aggiornati</td><td>${esc(quandoFa(statoOra))}</td></tr>
+        <tr><td>Carichi da inviare</td><td>${coda().length}</td></tr>
+        <tr><td>Versione app</td><td>${APP_VER}</td></tr>
+        <tr><td>Versione script</td><td>${esc(S.versione || '?')}</td></tr>
+      </table>
+      <div class="btns"><button class="btn" data-az="aggiorna">Aggiorna adesso</button></div>
+      <div class="btns"><button class="btn pericolo" data-az="esci">Collega un'altra persona</button></div>
+    </section>`;
+}
+
+/* ---------- PRIMO AVVIO: manca il codice ---------- */
+function paginaCodice() {
+  return `<div class="vuoto"><img src="icona-192.png" alt="">
+    <h2 style="margin-top:14px">Caldaia Casa Solaroli</h2>
+    <p>Per collegare questo telefono apri il <b>link personale</b> che Francesco ha mandato sul gruppo WhatsApp «Casa».</p></div>
+    ${erroreCodice ? `<div class="banner errore"><div class="testo">${esc(erroreCodice)}</div></div>` : ''}
+    <section class="scheda">
+      <label class="campo"><span>Oppure incolla qui il link o il codice</span>
+        <input type="text" id="campoCodice" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…?c=…"></label>
+      <button class="btn primario" data-az="salvaCodice">Collega</button>
+    </section>`;
+}
+function estraiCodice(testo) {
+  testo = String(testo || '').trim();
+  const m = testo.match(/[?&]c=([A-Za-z0-9_-]+)/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{6,64}$/.test(testo) ? testo : '';
+}
+function impostaCodice(c) {
+  if (c === codice()) return;
+  ls.set(K.codice, c);
+  S = null; ls.del(K.stato); ls.del(K.statoOra); statoOra = 0;
+  erroreCodice = '';
+}
+
+/* =====================================================================
+ *  AZIONI DEI PULSANTI
+ * ===================================================================== */
+const azioni = {
+  vai(el) { pagina = el.dataset.p; disegna(); scrollTo(0, 0); },
+  aggiorna() { aggiorna(); },
+  sacchi(el) { ui.sacchi = Number(el.dataset.n); ls.set(K.sacchi, ui.sacchi); disegna(); },
+  async carica() {
+    const n = ui.sacchi;
+    if (!(await chiedi({ titolo: 'Hai caricato ' + sacchiTesto(n) + '?', testo: 'Lo registro a nome di ' + S.io.nome + ', adesso.', si: 'Sì, registra' }))) return;
+    const op = { id: uuid(), azione: 'carico', sacchi: n, quando: new Date().toISOString(), codice: codice(), chi: S.io.nome };
+    toast('Salvato, lo sto inviando…');
+    await accoda(op);
+    if (coda().some(o => o.id === op.id)) toast('Niente campo: il carico è salvato sul telefono e partirà da solo appena possibile.', 'avviso', 6500);
+    else toast('Carico registrato ✓', 'ok');
+  },
+  async sbancala() {
+    const v = vista();
+    const per = v.sacchiPerPallet || 70;
+    const scelta = await chiedi({
+      titolo: 'Quanti pallet avete portato dentro?',
+      html: `<div class="scelta" style="grid-template-columns:1fr 1fr" data-gruppo="pallet">
+        <button data-valore="1" aria-pressed="true">1</button><button data-valore="2" aria-pressed="false">2</button></div>
+        <p class="tenue piccolo">Ogni pallet: +${per} sacchi nel locale, −1 pallet fuori.${v.sacchi.pallet <= 0 ? ' Attenzione: risulta che fuori non ci siano più pallet.' : ''}</p>`,
+      si: 'Registra'
+    });
+    if (!scelta) return;
+    const n = Number(scelta.pallet) || 1;
+    if (v.sacchi.locale + n * per > CAPIENZA_LOCALE) toast('Nota: nel locale risulterebbero ' + (v.sacchi.locale + n * per) + ' sacchi, oltre i ' + CAPIENZA_LOCALE + ' che ci stanno.', 'avviso', 6000);
+    const ops = [];
+    for (let i = 0; i < n; i++) ops.push({ id: uuid(), azione: 'sbancalato', quando: new Date().toISOString(), codice: codice(), chi: S.io.nome });
+    salvaCoda(coda().concat(ops));
+    disegna();
+    await svuotaCoda();
+    if (coda().some(o => ops.some(x => x.id === o.id))) toast('Niente campo: salvato sul telefono, partirà da solo.', 'avviso', 6000);
+    else toast((n === 1 ? 'Pallet registrato' : n + ' pallet registrati') + ' ✓', 'ok');
+  },
+  async dimenticato(el) {
+    const giorni = [0, 1, 2].map(i => addG(oggiK(), -i));
+    const etichette = ['Oggi', 'Ieri', 'L\'altro ieri'];
+    const scelto = Number(el.dataset.g || 0);
+    const adesso = new Date();
+    const r = await chiedi({
+      titolo: 'Registra un carico dimenticato',
+      html: `<div class="campo"><span>Quando hai caricato?</span>
+          <div class="scelta tre" data-gruppo="giorno">${giorni.map((g, i) =>
+            `<button data-valore="${g}" aria-pressed="${i === scelto}">${etichette[i]}<small>${esc(fmtG(g))}</small></button>`).join('')}</div></div>
+        <label class="campo"><span>A che ora, più o meno</span>
+          <input type="time" data-campo="ora" value="${scelto === 0 ? oraLocale(new Date(adesso - 30 * 60000)) : '19:00'}"></label>
+        <div class="campo"><span>Quanti sacchi</span>
+          <div class="scelta" data-gruppo="sacchi">${[1, 2, 3, 4, 5, 6].map(n => `<button data-valore="${n}" aria-pressed="${n === ui.sacchi}">${n}</button>`).join('')}</div></div>
+        <p class="tenue piccolo">Viene registrato a nome di ${esc(S.io.nome)}, nel giorno e all'ora che scegli.</p>`,
+      si: 'Registra',
+      valida: v => {
+        if (!v.giorno || !v.sacchi) return 'Scegli il giorno e i sacchi.';
+        if (!/^\d{2}:\d{2}$/.test(v.ora || '')) return 'Scrivi un\'ora, anche approssimativa.';
+        const [y, mo, d] = v.giorno.split('-').map(Number), [hh, mm] = v.ora.split(':').map(Number);
+        if (new Date(y, mo - 1, d, hh, mm) > new Date()) return 'Quell\'ora non è ancora arrivata.';
+        return '';
+      }
+    });
+    if (!r) return;
+    const [y, mo, d] = r.giorno.split('-').map(Number), [hh, mm] = r.ora.split(':').map(Number);
+    const op = { id: uuid(), azione: 'carico', sacchi: Number(r.sacchi), quando: new Date(y, mo - 1, d, hh, mm).toISOString(),
+      codice: codice(), chi: S.io.nome, nota: 'registrato in ritardo' };
+    await accoda(op);
+    if (coda().some(o => o.id === op.id)) toast('Niente campo: salvato sul telefono, partirà da solo.', 'avviso', 6000);
+    else toast('Carico di ' + (r.giorno === oggiK() ? 'oggi' : fmtG(r.giorno)) + ' registrato ✓', 'ok');
+  },
+  ieriVisto() { ls.set(K.ieriVisto, addG(oggiK(), -1)); disegna(); },
+  async conta() {
+    const v = vista();
+    const r = await chiedi({
+      titolo: 'Quanti sacchi ci sono nel locale?',
+      html: `<label class="campo"><span>Sacchi contati adesso</span>
+        <input type="number" class="numero" data-campo="n" inputmode="numeric" min="0" max="500" step="1" autofocus></label>`,
+      si: 'Avanti',
+      valida: x => /^\d{1,3}$/.test(String(x.n || '').trim()) && Number(x.n) <= 500 ? '' : 'Scrivi il numero di sacchi (da 0 a 500).'
+    });
+    if (!r) return;
+    const n = Number(r.n), prima = v.sacchi.locale, diff = n - prima;
+    const conferma = await chiedi({
+      titolo: diff === 0 ? 'I conti tornano 👍' : 'Correggo la giacenza?',
+      testo: diff === 0
+        ? 'Risultano proprio ' + sacchiTesto(prima) + '. Lo registro come controllo.'
+        : 'Risultano ' + sacchiTesto(prima) + ', tu ne hai contati ' + n + ': registro ' + sacchiTesto(Math.abs(diff)) + (diff < 0 ? ' in meno' : ' in più') + '. Francesco riceve un avviso.',
+      si: 'Registra'
+    });
+    if (!conferma) return;
+    const op = { id: uuid(), azione: 'conta', sacchi: n, quando: new Date().toISOString(), codice: codice(), chi: S.io.nome };
+    await accoda(op);
+    if (coda().some(o => o.id === op.id)) toast('Niente campo: la conta è salvata sul telefono e partirà da sola.', 'avviso', 6000);
+    else toast('Conta registrata ✓ Nel locale: ' + sacchiTesto(n), 'ok');
+  },
+  async annullaCarico(el) {
+    if (!(await chiedi({ titolo: 'Annullare questo carico?', testo: sacchiTesto(Number(el.dataset.n)) + ' alle ' + el.dataset.ora + '. Si può fare solo nei primi 15 minuti.', si: 'Annulla il carico', no: 'Indietro', pericolo: true }))) return;
+    await azioneOnline('annullaCarico', { id: el.dataset.id }, 'Carico annullato');
+  },
+  async annullaCoda(el) {
+    const op = coda().find(o => o.id === el.dataset.id);
+    if (!op) return disegna();
+    if (!(await chiedi({ titolo: 'Togliere questa registrazione?', testo: 'Non è ancora partita: la tolgo dal telefono.', si: 'Togli', no: 'Indietro', pericolo: true }))) return;
+    if (svuotando) await svuotando;   // se nel frattempo è partita, non c'è più niente da togliere qui
+    if (!coda().some(o => o.id === op.id)) { toast('Era già partita: se è un carico, usa «Annulla» accanto al carico.', 'avviso', 6000); return disegna(); }
+    salvaCoda(coda().filter(o => o.id !== op.id));
+    toast('Tolta ✓', 'ok'); disegna();
+  },
+  vista(el) { ui.vista = el.dataset.v; ls.set(K.vista, ui.vista); disegna(); },
+  soloMiei(el) { ui.soloMiei = el.checked; ls.set(K.soloMiei, ui.soloMiei); disegna(); },
+  passate() { ui.passate = !ui.passate; disegna(); },
+  mese(el) {
+    const [y, m] = (ui.mese || oggiK().slice(0, 7)).split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + Number(el.dataset.d), 1));
+    ui.mese = d.getUTCFullYear() + '-' + p2(d.getUTCMonth() + 1);
+    disegna();
+  },
+  async scambioChiedi(el) {
+    const t = S.turni.find(x => x.dal === el.dataset.dal);
+    if (!t) return;
+    if (!(await chiedi({ titolo: 'Chiedere un sostituto?', testo: 'Per la settimana ' + fmtSett(t.dal, t.al) + '. Gli altri appartamenti ricevono una notifica: il primo che accetta prende il turno.', si: 'Chiedi' }))) return;
+    await azioneOnline('scambioChiedi', { dal: t.dal }, 'Richiesta inviata agli altri ✓');
+  },
+  async scambioAccetta(el) {
+    const s = (S.scambi || []).find(x => x.id === el.dataset.id);
+    if (!s) return;
+    if (!(await chiedi({ titolo: 'Prendi tu questo turno?', testo: 'Settimana ' + fmtSett(s.dal, s.al) + ', al posto di ' + s.appartamento + '.', si: 'Sì, lo faccio io' }))) return;
+    await azioneOnline('scambioAccetta', { id: s.id }, 'Il turno è tuo ✓ ' + s.richiestoDa + ' riceve una notifica.');
+  },
+  async scambioAnnulla(el) {
+    if (!(await chiedi({ titolo: 'Annullare la richiesta?', si: 'Annulla la richiesta', no: 'Indietro', pericolo: true }))) return;
+    await azioneOnline('scambioAnnulla', { id: el.dataset.id }, 'Richiesta annullata');
+  },
+  async indispAnteprima() {
+    leggiCampiInd();
+    const { dal, al } = ui.ind;
+    if (!dal) return toast('Scegli la data di inizio.', 'avviso');
+    if (al && al < dal) return toast('La data di fine viene prima di quella di inizio.', 'avviso');
+    const r = await azioneOnline('indispAnteprima', { dal, al: al || dal });
+    if (r) { ui.anteprima = r; disegna(); document.getElementById('assenze')?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }
+  },
+  indispAnnulla() { ui.anteprima = null; disegna(); },
+  async indispConferma() {
+    leggiCampiInd();
+    const { dal, al, nota } = ui.ind;
+    const r = await azioneOnline('indispAggiungi', { dal, al: al || dal, nota }, 'Assenza salvata ✓');
+    if (r) { ui.anteprima = null; ui.ind = { dal: '', al: '', nota: '' }; disegna(); }
+  },
+  async indispRimuovi(el) {
+    if (!(await chiedi({ titolo: 'Togliere questa assenza?', testo: 'Il calendario verrà ricalcolato.', si: 'Togli', pericolo: true }))) return;
+    await azioneOnline('indispRimuovi', { id: el.dataset.id }, 'Assenza tolta');
+  },
+  notifiche() { bottoneNotifiche(); },
+  async installa() {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => null);
+    installPrompt = null; disegna();
+  },
+  async preferenze() {
+    const ora = $('#prefOra').value || S.io.ora;
+    await azioneOnline('preferenze', {
+      promemoria: $('#prefProm').checked, ora,
+      preavviso: $('#prefPre').checked, giorni: Number($('#prefGiorni').value)
+    }, 'Promemoria salvati ✓');
+  },
+  async esci() {
+    if (coda().length) return toast('Ci sono ancora carichi da inviare: aspetta di avere campo.', 'avviso', 5000);
+    if (!(await chiedi({ titolo: 'Collegare un\'altra persona?', testo: 'Questo telefono smetterà di essere collegato a ' + S.io.nome + '. Servirà un altro link personale.', si: 'Scollega', pericolo: true }))) return;
+    ls.del(K.codice); ls.del(K.token); ls.del(K.tokenCod); S = null; ls.del(K.stato); pagina = 'oggi'; disegna();
+  },
+  salvaCodice() {
+    const c = estraiCodice($('#campoCodice').value);
+    if (!c) return toast('Non riconosco il link: incollalo per intero.', 'avviso');
+    impostaCodice(c); pagina = 'oggi'; disegna(); aggiorna().then(dopoCollegamento);
+  }
+};
+function leggiCampiInd() {
+  const d = $('#indDal'), a = $('#indAl'), n = $('#indNota');
+  if (d) ui.ind = { dal: d.value, al: a.value, nota: n.value.trim() };
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-az]');
+  if (!el || el.tagName === 'INPUT') return;
+  e.preventDefault();
+  const f = azioni[el.dataset.az];
+  if (f) f(el);
+});
+document.addEventListener('change', e => {
+  const el = e.target.closest('input[data-az]');
+  if (el && azioni[el.dataset.az]) azioni[el.dataset.az](el);
+  if (['indDal', 'indAl'].includes(e.target.id)) {
+    leggiCampiInd();
+    if (e.target.id === 'indDal' && (!ui.ind.al || ui.ind.al < ui.ind.dal)) { ui.ind.al = ui.ind.dal; const a = $('#indAl'); if (a) a.value = ui.ind.dal; }
+    if (ui.anteprima) { ui.anteprima = null; disegna(); }
+  }
+});
+
+/* =====================================================================
+ *  AVVIO
+ * ===================================================================== */
+function leggiCodiceDaIndirizzo() {
+  const u = new URL(location.href);
+  const c = u.searchParams.get('c');
+  if (c === null) return;
+  const pulito = estraiCodice(c);
+  if (pulito) impostaCodice(pulito);
+  u.searchParams.delete('c');
+  history.replaceState(null, '', u.pathname + u.search + u.hash);
+}
+function dopoCollegamento() {
+  // se il permesso c'è già, rinnova il token in silenzio
+  if (S && 'Notification' in window && Notification.permission === 'granted') attivaNotifiche().catch(() => {}).finally(disegnaTestata);
+}
+
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; disegna(); });
+window.addEventListener('appinstalled', () => { installPrompt = null; toast('App installata ✓', 'ok'); disegna(); });
+window.addEventListener('online', () => { senzaRete = false; aggiorna({ silenzioso: true }); });
+window.addEventListener('offline', () => { senzaRete = true; disegnaTestata(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - statoOra > 60000) aggiorna({ silenzioso: true });
+});
+setInterval(() => {
+  if (document.visibilityState === 'visible' && (coda().length || Date.now() - statoOra > 5 * 60000)) aggiorna({ silenzioso: true });
+}, 60000);
+
+leggiCodiceDaIndirizzo();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+disegna();
+aggiorna({ silenzioso: !!S }).then(dopoCollegamento);
+</script>
+</body>
+</html>

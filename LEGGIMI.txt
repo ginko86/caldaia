@@ -1,0 +1,15 @@
+APP CALDAIA CASA SOLAROLI – versione 1.1 (30 ottobre 2026) – richiede lo script Caldaia 1.1
+
+Questi 7 file vanno caricati tutti insieme, nella stessa cartella,
+sul servizio di pubblicazione (GitHub Pages):
+
+  index.html               l'app vera e propria (tutte le schermate)
+  sw.js                    funzionamento senza campo + notifiche ad app chiusa
+  manifest.webmanifest     nome e icona per la schermata Home
+  icona-192.png
+  icona-512.png
+  icona-maskable-512.png
+  LEGGIMI.txt              questo foglio (facoltativo)
+
+Non contengono nulla di segreto: la chiave privata resta solo nello script Google.
+Quando si pubblica una versione nuova, nel file sw.js va aumentato VERSIONE.
