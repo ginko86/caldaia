@@ -180,6 +180,13 @@ table.dati td:last-child{text-align:right;font-weight:650}
 .attesa-velo{position:fixed;inset:0;z-index:60;background:rgba(20,14,10,.35);display:grid;place-items:center}
 .attesa-velo div{background:var(--scheda);border-radius:16px;padding:16px 22px;font-weight:650;display:flex;gap:12px;align-items:center}
 .rotella{width:22px;height:22px;border-radius:50%;border:3px solid var(--linea);border-top-color:var(--fuoco);animation:gira .8s linear infinite}
+.scelta.due{grid-template-columns:1fr 1fr}
+.scelta.due button{font-size:1.05rem;height:64px}
+.scelta.giorni{grid-template-columns:repeat(4,1fr)}
+.scelta.giorni button{font-size:1rem;height:64px;line-height:1.15}
+.scelta.giorni button small{display:block;font-size:.72rem;font-weight:600;opacity:.8}
+.scelta button[disabled]{opacity:.35}
+.oggi-carica{background:rgba(255,255,255,.95);color:var(--inchiostro);border-radius:12px;padding:8px 12px;margin-top:10px;font-weight:600}
 .scelta.tre{grid-template-columns:repeat(3,1fr)}
 .scelta.tre button{font-size:1rem;height:64px;line-height:1.15}
 .scelta.tre button small{display:block;font-size:.75rem;font-weight:600;opacity:.8}
@@ -221,11 +228,11 @@ table.dati td:last-child{text-align:right;font-weight:650}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.1, 30 ottobre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.1).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.2, 30 ottobre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.2).
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.1';
+const APP_VER = '1.2';
 const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const firebaseConfig = {
@@ -335,7 +342,11 @@ function chiedi({ titolo, testo = '', si = 'Conferma', no = 'Annulla', pericolo 
     const chiudi = r => { m.innerHTML = ''; ok(r); };
     const valori = () => {
       const o = {};
-      m.querySelectorAll('[data-gruppo]').forEach(g => { const b = g.querySelector('[aria-pressed="true"]'); if (b) o[g.dataset.gruppo] = b.dataset.valore; });
+      m.querySelectorAll('[data-gruppo]').forEach(g => {
+        const premuti = [...g.querySelectorAll('[aria-pressed="true"]')].map(b => b.dataset.valore);
+        if ('multi' in g.dataset) o[g.dataset.gruppo] = premuti;      // scelta multipla
+        else if (premuti.length) o[g.dataset.gruppo] = premuti[0];
+      });
       m.querySelectorAll('[data-campo]').forEach(i => { o[i.dataset.campo] = i.value; });
       return o;
     };
@@ -343,7 +354,9 @@ function chiedi({ titolo, testo = '', si = 'Conferma', no = 'Annulla', pericolo 
       const v = e.target.closest('[data-valore]');
       if (v) {
         const g = v.closest('[data-gruppo]') || m;
-        g.querySelectorAll('[data-valore]').forEach(x => x.setAttribute('aria-pressed', String(x === v)));
+        if ('multi' in g.dataset) v.setAttribute('aria-pressed', String(v.getAttribute('aria-pressed') !== 'true'));
+        else g.querySelectorAll('[data-valore]').forEach(x => x.setAttribute('aria-pressed', String(x === v)));
+        const err = $('#erroreFinestra'); if (err) err.textContent = '';
         return;
       }
       const b = e.target.closest('[data-r]');
@@ -514,6 +527,10 @@ function vista() {
   return v;
 }
 const turnoDel = (turni, k) => (turni || []).find(t => t.dal <= k && t.al >= k) || null;
+/* Giorno coperto da un altro appartamento: vale solo se la settimana è ancora di chi l'ha chiesto */
+const copertura = (v, k, t) => t ? (v.coperture || []).find(c => c.giorno === k && c.appartamento === t.appartamento) || null : null;
+/* Le coperture le mostriamo a parte: dalla nota del foglio togliamo le righe "gio 5 nov: carica Sara" */
+const notaSenzaCoperture = nota => String(nota || '').split('; ').filter(x => !/: carica /.test(x)).join('; ');
 const prossimoMio = v => (v.turni || []).find(t => isMio(t.appartamento) && t.al >= oggiK()) || null;
 
 /* =====================================================================
@@ -615,14 +632,18 @@ function paginaOggi(v) {
   const primo = (v.turni || [])[0];
   let h = bannerDati();
 
-  // Turno della settimana
+  // Turno della settimana (ed eventuale giorno coperto da un altro)
   if (corrente) {
+    const cop = copertura(v, oggi, corrente);
+    const nota = notaSenzaCoperture(corrente.nota);
+    const tocca = cop ? isMio(cop.da) : isMio(corrente.appartamento);
     h += `<section class="turno-ora" style="--c:${esc(colore(corrente.appartamento))}">
       <div class="etichetta">Di turno questa settimana</div>
       <div class="nome">${esc(corrente.appartamento)}</div>
       <div class="date">${esc(fmtG(corrente.dal))} – ${esc(fmtG(corrente.al))}</div>
-      ${corrente.nota ? `<div class="date">${esc(corrente.nota)}</div>` : ''}
-      ${isMio(corrente.appartamento) ? '<span class="tuo">Tocca a te</span>' : ''}</section>`;
+      ${nota ? `<div class="date">${esc(nota)}</div>` : ''}
+      ${cop ? `<div class="oggi-carica">Oggi carica <b>${esc(cop.da)}</b>, al posto di ${esc(corrente.appartamento)}</div>` : ''}
+      ${tocca ? `<span class="tuo">${cop ? 'Oggi tocca a te' : 'Tocca a te'}</span>` : ''}</section>`;
   } else if (primo && primo.dal > oggi) {
     // prima dell'inizio: carica già chi ha il primo turno
     h += `<section class="turno-ora" style="--c:${esc(colore(primo.appartamento))}">
@@ -635,9 +656,19 @@ function paginaOggi(v) {
   // Richieste di sostituzione degli altri
   for (const s of v.scambi || []) {
     if (isMio(s.appartamento)) continue;
-    h += `<div class="banner avviso"><span>🔁</span><div class="testo"><b>${esc(s.richiestoDa)} cerca un sostituto</b>
-      Settimana ${esc(fmtSett(s.dal, s.al))}${s.richiestoDa !== s.appartamento ? ' (turno di ' + esc(s.appartamento) + ')' : ''}.
+    const di = s.richiestoDa !== s.appartamento ? ' (turno di ' + esc(s.appartamento) + ')' : '';
+    h += `<div class="banner avviso"><span>🔁</span><div class="testo">
+      ${s.giorno
+        ? `<b>${esc(s.richiestoDa)} cerca chi carica ${esc(GGL[dk(s.giorno).getUTCDay()])} ${esc(fmtG(s.giorno, false))}</b>Solo quel giorno${di}.`
+        : `<b>${esc(s.richiestoDa)} cerca un sostituto</b>Settimana ${esc(fmtSett(s.dal, s.al))}${di}.`}
       <div class="btns"><button class="btn piccolo primario" data-az="scambioAccetta" data-id="${esc(s.id)}">Lo faccio io</button></div></div></div>`;
+  }
+  // Giorni in cui ho promesso di caricare io (da domani in poi)
+  const promessi = (v.coperture || []).filter(c => isMio(c.da) && c.giorno > oggi);
+  if (promessi.length) {
+    h += `<section class="scheda riga"><span style="font-size:1.6rem">🤝</span><div style="flex:1">
+      <div class="tenue piccolo">Hai detto che carichi tu</div>
+      ${promessi.map(c => `<div><b>${esc(GGL[dk(c.giorno).getUTCDay()])} ${esc(fmtG(c.giorno, false))}</b> al posto di ${esc(c.appartamento)}</div>`).join('')}</div></section>`;
   }
 
   // Carico
@@ -747,8 +778,8 @@ function paginaTurni(v) {
   const scambi = v.scambi || [];
   if (scambi.length) {
     h += `<section class="scheda"><h2>Richieste di sostituzione</h2><ul class="lista">${scambi.map(s => `<li><div class="cresce">
-      <b>${esc(fmtSett(s.dal, s.al))}</b> · <span class="pill" style="--c:${esc(colore(s.appartamento))}">${esc(s.appartamento)}</span>
-      <div class="tenue piccolo">chiesta da ${esc(s.richiestoDa)}</div></div>
+      <b>${s.giorno ? esc(GGL[dk(s.giorno).getUTCDay()]) + ' ' + esc(fmtG(s.giorno, false)) : esc(fmtSett(s.dal, s.al))}</b> · <span class="pill" style="--c:${esc(colore(s.appartamento))}">${esc(s.appartamento)}</span>
+      <div class="tenue piccolo">${s.giorno ? 'solo questo giorno · ' : 'tutta la settimana · '}chiesta da ${esc(s.richiestoDa)}</div></div>
       ${isMio(s.appartamento)
         ? `<button class="btn piccolo pericolo" data-az="scambioAnnulla" data-id="${esc(s.id)}">Annulla</button>`
         : `<button class="btn piccolo primario" data-az="scambioAccetta" data-id="${esc(s.id)}">Lo faccio io</button>`}</li>`).join('')}</ul></section>`;
@@ -770,9 +801,11 @@ function paginaTurni(v) {
 
 function vistaElenco(v, corrente) {
   const oggi = oggiK();
-  const aperti = new Set((v.scambi || []).map(s => s.dal));
+  const aperti = new Set((v.scambi || []).filter(s => !s.giorno).map(s => s.dal));
+  const giorniAperti = dal => (v.scambi || []).filter(s => s.giorno && s.dal === dal).map(s => s.giorno).sort();
+  const coperti = t => (v.coperture || []).filter(c => c.appartamento === t.appartamento && c.giorno >= t.dal && c.giorno <= t.al).sort((a, b) => a.giorno.localeCompare(b.giorno));
   let turni = (v.turni || []).filter(t => ui.passate || t.al >= oggi);
-  if (ui.soloMiei) turni = turni.filter(t => isMio(t.appartamento));
+  if (ui.soloMiei) turni = turni.filter(t => isMio(t.appartamento) || coperti(t).some(c => isMio(c.da)));
   const passate = (v.turni || []).some(t => t.al < oggi);
   let h = turni.length ? '' : '<p class="tenue">Nessuna settimana da mostrare.</p>';
   h += '<div>' + turni.map(t => {
@@ -783,8 +816,10 @@ function vistaElenco(v, corrente) {
         <div class="riga spazio"><span class="quando">${esc(fmtG(t.dal))} – ${esc(fmtG(t.al))}</span>
         ${t.stato === 'previsto' ? '<span class="etic">previsto</span>' : '<span class="etic">🔒 confermato</span>'}</div>
         <div class="chi"><span class="pill">${esc(t.appartamento)}</span>${isMio(t.appartamento) ? ' <b>· tu</b>' : ''}</div>
-        ${t.nota ? `<div class="tenue piccolo">${esc(t.nota)}</div>` : ''}
-        ${aperti.has(t.dal) ? '<div class="piccolo" style="color:var(--avviso);font-weight:650">Sostituzione richiesta</div>' : ''}
+        ${notaSenzaCoperture(t.nota) ? `<div class="tenue piccolo">${esc(notaSenzaCoperture(t.nota))}</div>` : ''}
+        ${coperti(t).map(c => `<div class="piccolo">🤝 ${esc(fmtG(c.giorno))}: carica <span class="pill" style="--c:${esc(colore(c.da))}">${esc(c.da)}</span>${isMio(c.da) ? ' <b>· tu</b>' : ''}</div>`).join('')}
+        ${aperti.has(t.dal) ? '<div class="piccolo" style="color:var(--avviso);font-weight:650">Sostituzione richiesta per tutta la settimana</div>' : ''}
+        ${giorniAperti(t.dal).length ? `<div class="piccolo" style="color:var(--avviso);font-weight:650">Aiuto chiesto per: ${giorniAperti(t.dal).map(g => esc(fmtG(g))).join(', ')}</div>` : ''}
         ${puoChiedere ? `<div class="azioni"><button class="btn piccolo" data-az="scambioChiedi" data-dal="${esc(t.dal)}">Chiedi sostituzione</button></div>` : ''}
       </div></div>`;
   }).join('') + '</div>';
@@ -804,11 +839,13 @@ function vistaMese(v) {
     const k = addG(inizio, i);
     if (i % 7 === 0 && i > 0 && k.slice(0, 7) !== ui.mese) break;
     const t = turnoDel(v.turni, k);
-    const mostra = t && (!ui.soloMiei || isMio(t.appartamento));
-    const c = mostra ? colore(t.appartamento) : '';
+    const cop = copertura(v, k, t);
+    const chi = cop ? cop.da : t && t.appartamento;   // chi carica quel giorno
+    const mostra = t && (!ui.soloMiei || isMio(chi));
+    const c = mostra ? colore(chi) : '';
     const alfa = t && t.stato === 'previsto' ? '30' : '66';
     const stile = mostra ? `background:${c}${alfa};border-bottom:4px solid ${c}` : '';
-    const nome = mostra && dk(k).getUTCDay() === 0 ? `<small>${esc(t.appartamento)}</small>` : '';
+    const nome = mostra && (cop || dk(k).getUTCDay() === 0) ? `<small>${cop ? '🤝 ' : ''}${esc(chi)}</small>` : '';
     celle += `<div class="g ${k.slice(0, 7) !== ui.mese ? 'fuori' : ''} ${k === oggi ? 'oggi' : ''}" style="${stile}">${dk(k).getUTCDate()}${nome}</div>`;
   }
   return `<div class="mese-testa">
@@ -817,7 +854,7 @@ function vistaMese(v) {
       <button class="btn piccolo" data-az="mese" data-d="1" aria-label="Mese successivo">›</button></div>
     <div class="calendario">${['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'].map(g => `<div class="gs">${g}</div>`).join('')}${celle}</div>
     <div class="legenda">${(v.appartamenti || []).map(a => `<span class="pill" style="--c:${esc(a.colore)}">${esc(a.nome)}</span>`).join('')}</div>
-    <p class="tenue piccolo">Ogni riga è una settimana di turno, da domenica a sabato. Colori pieni: confermate. Colori tenui: previste.</p>`;
+    <p class="tenue piccolo">Ogni riga è una settimana di turno, da domenica a sabato. Colori pieni: confermate. Colori tenui: previste. 🤝 = giorno coperto da un altro appartamento.</p>`;
 }
 
 function sezioneIndisponibilita(v) {
@@ -1175,14 +1212,49 @@ const azioni = {
   async scambioChiedi(el) {
     const t = S.turni.find(x => x.dal === el.dataset.dal);
     if (!t) return;
-    if (!(await chiedi({ titolo: 'Chiedere un sostituto?', testo: 'Per la settimana ' + fmtSett(t.dal, t.al) + '. Gli altri appartamenti ricevono una notifica: il primo che accetta prende il turno.', si: 'Chiedi' }))) return;
-    await azioneOnline('scambioChiedi', { dal: t.dal }, 'Richiesta inviata agli altri ✓');
+    const oggi = oggiK();
+    // giorni già chiesti o già coperti: non si possono richiedere di nuovo
+    const occupati = new Set([
+      ...(S.scambi || []).filter(s => s.giorno && s.dal === t.dal).map(s => s.giorno),
+      ...(S.coperture || []).filter(c => c.appartamento === t.appartamento).map(c => c.giorno)
+    ]);
+    const tipo = await chiedi({
+      titolo: 'Ti serve un sostituto?',
+      testo: 'Settimana ' + fmtSett(t.dal, t.al) + '.',
+      html: `<div class="scelta due" data-gruppo="tipo">
+        <button data-valore="giorni" aria-pressed="false">Solo alcuni giorni</button>
+        <button data-valore="settimana" aria-pressed="false">Tutta la settimana</button></div>`,
+      si: 'Avanti',
+      valida: x => x.tipo ? '' : 'Scegli una delle due.'
+    });
+    if (!tipo) return;
+    if (tipo.tipo === 'settimana') {
+      if (!(await chiedi({ titolo: 'Chiedere un sostituto per tutta la settimana?', testo: 'Gli altri appartamenti ricevono una notifica: il primo che accetta prende il turno.', si: 'Chiedi' }))) return;
+      return azioneOnline('scambioChiedi', { dal: t.dal }, 'Richiesta inviata agli altri ✓');
+    }
+    const giorni = [0, 1, 2, 3, 4, 5, 6].map(i => addG(t.dal, i));
+    const r = await chiedi({
+      titolo: 'Quali giorni?',
+      testo: 'Tocca i giorni in cui non puoi caricare. Il turno resta tuo: chi accetta carica solo quel giorno.',
+      html: `<div class="scelta giorni" data-gruppo="giorni" data-multi>${giorni.map(g => {
+        const no = g < oggi || occupati.has(g);
+        return `<button data-valore="${g}" aria-pressed="false" ${no ? 'disabled' : ''}>${GG[dk(g).getUTCDay()]}<small>${dk(g).getUTCDate()} ${MM[dk(g).getUTCMonth()]}${occupati.has(g) ? ' ✓' : ''}</small></button>`;
+      }).join('')}</div>
+        ${occupati.size ? '<p class="tenue piccolo">✓ = già chiesto o già coperto.</p>' : ''}`,
+      si: 'Chiedi',
+      valida: x => (x.giorni || []).length ? '' : 'Tocca almeno un giorno.'
+    });
+    if (!r) return;
+    await azioneOnline('scambioChiedi', { dal: t.dal, giorni: r.giorni }, 'Richiesta inviata agli altri ✓');
   },
   async scambioAccetta(el) {
     const s = (S.scambi || []).find(x => x.id === el.dataset.id);
     if (!s) return;
-    if (!(await chiedi({ titolo: 'Prendi tu questo turno?', testo: 'Settimana ' + fmtSett(s.dal, s.al) + ', al posto di ' + s.appartamento + '.', si: 'Sì, lo faccio io' }))) return;
-    await azioneOnline('scambioAccetta', { id: s.id }, 'Il turno è tuo ✓ ' + s.richiestoDa + ' riceve una notifica.');
+    const giorno = s.giorno ? GGL[dk(s.giorno).getUTCDay()] + ' ' + fmtG(s.giorno, false) : '';
+    if (!(await chiedi(s.giorno
+      ? { titolo: 'Carichi tu ' + giorno + '?', testo: 'Al posto di ' + s.appartamento + ', solo quel giorno. La sera riceverai tu il promemoria.', si: 'Sì, carico io' }
+      : { titolo: 'Prendi tu questo turno?', testo: 'Settimana ' + fmtSett(s.dal, s.al) + ', al posto di ' + s.appartamento + '.', si: 'Sì, lo faccio io' }))) return;
+    await azioneOnline('scambioAccetta', { id: s.id }, (s.giorno ? 'Grazie! ' : 'Il turno è tuo ✓ ') + s.richiestoDa + ' riceve una notifica.');
   },
   async scambioAnnulla(el) {
     if (!(await chiedi({ titolo: 'Annullare la richiesta?', si: 'Annulla la richiesta', no: 'Indietro', pericolo: true }))) return;

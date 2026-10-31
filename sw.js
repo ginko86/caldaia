@@ -5,7 +5,7 @@
  *  2. riceve le notifiche di Firebase quando l'app è chiusa.
  * Quando si pubblica una nuova versione dell'app, aumentare VERSIONE.
  */
-const VERSIONE = '1.1.0';
+const VERSIONE = '1.2.0';
 const CACHE = 'caldaia-' + VERSIONE;
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const FILE_APP = [

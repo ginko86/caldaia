@@ -1,4 +1,4 @@
-APP CALDAIA CASA SOLAROLI – versione 1.1 (30 ottobre 2026) – richiede lo script Caldaia 1.1
+APP CALDAIA CASA SOLAROLI – versione 1.2 (30 ottobre 2026) – richiede lo script Caldaia 1.2
 
 Questi 7 file vanno caricati tutti insieme, nella stessa cartella,
 sul servizio di pubblicazione (GitHub Pages):
