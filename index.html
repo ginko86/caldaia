@@ -188,6 +188,8 @@ table.dati td:last-child{text-align:right;font-weight:650}
 .scelta button[disabled]{opacity:.35}
 .oggi-carica{background:rgba(255,255,255,.95);color:var(--inchiostro);border-radius:12px;padding:8px 12px;margin-top:10px;font-weight:600}
 .scelta.tre{grid-template-columns:repeat(3,1fr)}
+.scelta.cinque{grid-template-columns:repeat(5,1fr)}
+.scelta.cinque button{height:52px;font-size:1.3rem}
 .scelta.tre button{font-size:1rem;height:64px;line-height:1.15}
 .scelta.tre button small{display:block;font-size:.75rem;font-weight:600;opacity:.8}
 .campo input.numero{font-size:2.2rem;font-weight:800;text-align:center;min-height:72px}
@@ -228,11 +230,14 @@ table.dati td:last-child{text-align:right;font-weight:650}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.2, 30 ottobre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.2).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.3, 1 novembre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.3).
+ *  1.3: sacchi portati via (Romano, saletta prove): tolgono dalla giacenza,
+ *       non entrano nel consumo; totali della stagione nella pagina Pellet.
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.2';
+const APP_VER = '1.3';
+const MAX_PRELIEVO = 10;       // sacchi portati via scelti con i pulsanti (lo script ne accetta fino a 30)
 const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const firebaseConfig = {
@@ -314,6 +319,7 @@ function quandoFa(ms) {
 }
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2));
 const sacchiTesto = n => n + (Math.abs(n) === 1 ? ' sacco' : ' sacchi');
+const elencoO = l => l.length > 1 ? l.slice(0, -1).join(', ') + ' o ' + l[l.length - 1] : (l[0] || '');
 const colore = nome => ((S && S.appartamenti || []).find(a => a.nome === nome) || {}).colore || '#888888';
 const isMio = app => S && S.io && app === S.io.appartamento;
 const codice = () => ls.get(K.codice, '');
@@ -482,7 +488,8 @@ function svuotaCoda() {
       if (!q.length) break;
       const op = q[0];
       const params = { id: op.id, quando: op.quando };
-      if (op.sacchi != null) params.sacchi = op.sacchi;   // carico e conta
+      if (op.sacchi != null) params.sacchi = op.sacchi;   // carico, prelievo e conta
+      if (op.per) params.per = op.per;                     // prelievo: per chi
       if (op.nota) params.nota = op.nota;
       let r;
       try { r = await apiAzione(op.codice, op.azione, params); }
@@ -490,7 +497,7 @@ function svuotaCoda() {
       if (!r.ok) {
         // problemi passeggeri: si riprova più tardi
         if (/lock|timeout|tempo|riprova|servizio|service|quota|codice/i.test(r.errore || '')) break;
-        toast('Non registrato (' + (op.azione === 'carico' ? sacchiTesto(op.sacchi) + ' alle ' + oraLocale(new Date(op.quando)) : 'pallet') + '): ' + r.errore, 'errore', 7000);
+        toast('Non registrato (' + descrOp(op) + '): ' + r.errore, 'errore', 7000);
       } else {
         inviati++;
         senzaRete = false;
@@ -501,6 +508,14 @@ function svuotaCoda() {
     return inviati;
   })().finally(() => { svuotando = null; disegna(); });
   return svuotando;
+}
+
+function descrOp(op) {
+  const ora = ' alle ' + oraLocale(new Date(op.quando));
+  if (op.azione === 'carico') return sacchiTesto(op.sacchi) + ora;
+  if (op.azione === 'prelievo') return sacchiTesto(op.sacchi) + ' per ' + op.per + ora;
+  if (op.azione === 'conta') return 'conta dei sacchi' + ora;
+  return 'pallet';
 }
 
 /* Stato "come sarà": quello del server più i carichi ancora in coda */
@@ -515,6 +530,10 @@ function vista() {
       v.sacchi.locale -= o.sacchi;
       const d = new Date(o.quando);
       if (chiaveLocale(d) === oggi) v.carichiOggi.push({ ora: oraLocale(d), persona: o.chi, sacchi: o.sacchi, attesa: true, opId: o.id });
+    } else if (o.azione === 'prelievo') {
+      v.sacchi.locale -= o.sacchi;
+      const t = (v.portatiVia = v.portatiVia || []).find(x => x.per === o.per);
+      if (t) t.sacchi += o.sacchi; else v.portatiVia.push({ per: o.per, sacchi: o.sacchi });
     } else if (o.azione === 'sbancalato') {
       v.sacchi.locale += v.sacchiPerPallet || 70;
       v.sacchi.pallet -= 1;
@@ -680,7 +699,9 @@ function paginaOggi(v) {
       ${[1, 2, 3, 4, 5, 6].map(n => `<button data-az="sacchi" data-n="${n}" aria-pressed="${n === ui.sacchi}">${n}</button>`).join('')}
     </div>
     <button class="btn primario grande" data-az="carica">Ho caricato ${esc(sacchiTesto(ui.sacchi))}</button>
+    <p class="tenue piccolo" style="text-align:center;margin:8px 0 0">Il sacco si conta quando lo apri, anche se non entra tutto.</p>
     <button class="link-btn" data-az="dimenticato">Ho dimenticato di registrare un carico</button>
+    ${(v.destinazioni || []).length ? `<button class="link-btn" data-az="prelievo">Ho preso sacchi per ${esc(elencoO(v.destinazioni))}</button>` : ''}
     <h3>Oggi ${totale ? `<span class="tenue">· ${esc(sacchiTesto(totale))}</span>` : ''}</h3>
     ${carichi.length ? `<ul class="lista">${carichi.map(rigaCarico).join('')}</ul>`
       : '<p class="tenue">Nessun carico registrato oggi.</p>'}
@@ -912,6 +933,19 @@ function paginaPellet(v) {
     <button class="btn" data-az="conta">Ho contato i sacchi</button>
   </section>`;
 
+  // Sacchi portati via (Romano, saletta prove…): escono dal locale, non dalla caldaia
+  const dest = v.destinazioni || [];
+  if (dest.length) {
+    const tot = v.portatiVia || [];
+    h += `<section class="scheda">
+    <h2>Sacchi portati via</h2>
+    <p class="tenue">Sacchi presi dal locale per ${esc(elencoO(dest))}: tolgono dai sacchi nel locale, ma non contano nel consumo della caldaia.</p>
+    <div class="griglia2">${tot.map(t => `<div class="cella"><div class="tenue piccolo">${esc(t.per)}</div>
+      <div class="val">${esc(t.sacchi)}</div><div class="tenue piccolo">${t.sacchi === 1 ? 'sacco' : 'sacchi'} da inizio stagione</div></div>`).join('')}</div>
+    <div class="btns"><button class="btn primario" data-az="prelievo">Ho preso dei sacchi</button></div>
+  </section>`;
+  }
+
   const mov = v.ultimiMovimenti || [];
   const inCoda = coda().filter(o => o.codice === codice());
   h += `<section class="scheda"><h2>Ultimi movimenti</h2>`;
@@ -920,19 +954,20 @@ function paginaPellet(v) {
     let giorno = '';
     h += '<ul class="lista">';
     const descr = { carico: 'carico', CARICO: 'carico', sbancalato: 'pallet sbancalato', SBANCALATO: 'pallet sbancalato', conta: 'conta dei sacchi', CONTA: 'conta dei sacchi' };
-    const quanti = (tipo, n) => /carico/i.test(tipo) ? '−' + n : /conta/i.test(tipo) ? '= ' + n : '+' + n;
+    const descrM = (tipo, per) => /prelievo/i.test(tipo) ? 'portati via per ' + (per || '?') : (descr[tipo] || tipo);
+    const quanti = (tipo, n) => /carico|prelievo/i.test(tipo) ? '−' + n : /conta/i.test(tipo) ? '= ' + n : '+' + n;
     for (const o of inCoda.slice().reverse()) {
       const d = new Date(o.quando);
-      h += `<li><span class="ora">${esc(oraLocale(d))}</span><span class="cresce">${esc(o.chi)} · ${esc(descr[o.azione])}
+      h += `<li><span class="ora">${esc(oraLocale(d))}</span><span class="cresce">${esc(o.chi)} · ${esc(descrM(o.azione, o.per))}
         ${chiaveLocale(d) !== oggiK() ? `<span class="tenue piccolo">(${esc(fmtG(chiaveLocale(d)))})</span>` : ''}<br><span class="etic attesa">da inviare</span></span>
         <b>${esc(quanti(o.azione, o.azione === 'sbancalato' ? perPallet : o.sacchi))}</b>
         <button class="btn mini pericolo" data-az="annullaCoda" data-id="${esc(o.id)}">Annulla</button></li>`;
     }
     for (const m of mov) {
       if (m.giorno !== giorno) { giorno = m.giorno; h += `<li style="border-top:0;padding-bottom:0"><b class="tenue piccolo" style="text-transform:uppercase;letter-spacing:.04em">${esc(m.giorno === oggiK() ? 'oggi' : fmtG(m.giorno))}</b></li>`; }
-      h += `<li><span class="ora">${esc(m.ora)}</span><span class="cresce">${esc(m.persona)} · ${esc(descr[m.tipo] || m.tipo)}</span>
+      h += `<li><span class="ora">${esc(m.ora)}</span><span class="cresce">${esc(m.persona)} · ${esc(descrM(m.tipo, m.per))}</span>
         <b>${esc(quanti(m.tipo, m.sacchi))}</b>
-        ${m.annullabile ? `<button class="btn mini pericolo" data-az="annullaCarico" data-id="${esc(m.id)}" data-n="${esc(m.sacchi)}" data-ora="${esc(m.ora)}">Annulla</button>` : ''}</li>`;
+        ${m.annullabile ? `<button class="btn mini pericolo" data-az="annullaCarico" data-id="${esc(m.id)}" data-n="${esc(m.sacchi)}" data-ora="${esc(m.ora)}" data-per="${esc(m.per || '')}">Annulla</button>` : ''}</li>`;
     }
     h += '</ul>';
   }
@@ -1059,7 +1094,7 @@ function paginaImpostazioni(v) {
       <h2>Informazioni</h2>
       <table class="dati">
         <tr><td>Dati aggiornati</td><td>${esc(quandoFa(statoOra))}</td></tr>
-        <tr><td>Carichi da inviare</td><td>${coda().length}</td></tr>
+        <tr><td>Registrazioni da inviare</td><td>${coda().length}</td></tr>
         <tr><td>Versione app</td><td>${APP_VER}</td></tr>
         <tr><td>Versione script</td><td>${esc(S.versione || '?')}</td></tr>
       </table>
@@ -1072,7 +1107,7 @@ function paginaImpostazioni(v) {
 function paginaCodice() {
   return `<div class="vuoto"><img src="icona-192.png" alt="">
     <h2 style="margin-top:14px">Caldaia Casa Solaroli</h2>
-    <p>Per collegare questo telefono apri il <b>link personale</b> che Francesco ha mandato sul gruppo WhatsApp «Casa».</p></div>
+    <p>Per collegare questo telefono apri il <b>link personale</b> che Francesco ti ha mandato in privato su WhatsApp.</p></div>
     ${erroreCodice ? `<div class="banner errore"><div class="testo">${esc(erroreCodice)}</div></div>` : ''}
     <section class="scheda">
       <label class="campo"><span>Oppure incolla qui il link o il codice</span>
@@ -1162,12 +1197,44 @@ const azioni = {
     if (coda().some(o => o.id === op.id)) toast('Niente campo: salvato sul telefono, partirà da solo.', 'avviso', 6000);
     else toast('Carico di ' + (r.giorno === oggiK() ? 'oggi' : fmtG(r.giorno)) + ' registrato ✓', 'ok');
   },
+  /* Sacchi portati via dal locale (Romano, saletta prove…) */
+  async prelievo() {
+    const dest = (S && S.destinazioni) || [];
+    if (!dest.length) return toast('Questa funzione non è ancora attiva: avvisa Francesco.', 'avviso');
+    const giorni = [0, 1, 2].map(i => addG(oggiK(), -i));
+    const etichette = ['Oggi', 'Ieri', 'L\'altro ieri'];
+    const r = await chiedi({
+      titolo: 'Sacchi portati via',
+      testo: 'Sacchi presi dal locale che non vanno in caldaia.',
+      html: `<div class="campo"><span>Per chi?</span>
+          <div class="scelta due" data-gruppo="per">${dest.map(d =>
+            `<button data-valore="${esc(d)}" aria-pressed="${dest.length === 1}">${esc(d)}</button>`).join('')}</div></div>
+        <div class="campo"><span>Quanti sacchi?</span>
+          <div class="scelta cinque" data-gruppo="sacchi">${Array.from({ length: MAX_PRELIEVO }, (_, i) => i + 1).map(n =>
+            `<button data-valore="${n}" aria-pressed="false">${n}</button>`).join('')}</div></div>
+        <div class="campo"><span>Quando?</span>
+          <div class="scelta tre" data-gruppo="giorno">${giorni.map((g, i) =>
+            `<button data-valore="${g}" aria-pressed="${i === 0}">${etichette[i]}<small>${esc(fmtG(g))}</small></button>`).join('')}</div></div>
+        <p class="tenue piccolo">Viene registrato a nome di ${esc(S.io.nome)}. Più di ${MAX_PRELIEVO} sacchi? Registrali in due volte.</p>`,
+      si: 'Registra',
+      valida: x => !x.per ? 'Scegli per chi sono i sacchi.' : !x.sacchi ? 'Scegli quanti sacchi.' : ''
+    });
+    if (!r) return;
+    const n = Number(r.sacchi), oggi = r.giorno === oggiK();
+    const [y, mo, d] = r.giorno.split('-').map(Number);
+    const op = { id: uuid(), azione: 'prelievo', sacchi: n, per: r.per,
+      quando: (oggi ? new Date() : new Date(y, mo - 1, d, 12, 0)).toISOString(),
+      codice: codice(), chi: S.io.nome, nota: oggi ? '' : 'registrato in ritardo' };
+    await accoda(op);
+    if (coda().some(o => o.id === op.id)) toast('Niente campo: salvato sul telefono, partirà da solo.', 'avviso', 6000);
+    else toast(sacchiTesto(n) + ' per ' + r.per + ' registrati ✓', 'ok');
+  },
   ieriVisto() { ls.set(K.ieriVisto, addG(oggiK(), -1)); disegna(); },
   async conta() {
     const v = vista();
     const r = await chiedi({
       titolo: 'Quanti sacchi ci sono nel locale?',
-      html: `<label class="campo"><span>Sacchi contati adesso</span>
+      html: `<p class="tenue piccolo">Conta solo i sacchi interi, ancora chiusi.</p><label class="campo"><span>Sacchi contati adesso</span>
         <input type="number" class="numero" data-campo="n" inputmode="numeric" min="0" max="500" step="1" autofocus></label>`,
       si: 'Avanti',
       valida: x => /^\d{1,3}$/.test(String(x.n || '').trim()) && Number(x.n) <= 500 ? '' : 'Scrivi il numero di sacchi (da 0 a 500).'
@@ -1188,8 +1255,11 @@ const azioni = {
     else toast('Conta registrata ✓ Nel locale: ' + sacchiTesto(n), 'ok');
   },
   async annullaCarico(el) {
-    if (!(await chiedi({ titolo: 'Annullare questo carico?', testo: sacchiTesto(Number(el.dataset.n)) + ' alle ' + el.dataset.ora + '. Si può fare solo nei primi 15 minuti.', si: 'Annulla il carico', no: 'Indietro', pericolo: true }))) return;
-    await azioneOnline('annullaCarico', { id: el.dataset.id }, 'Carico annullato');
+    const per = el.dataset.per;
+    if (!(await chiedi(per
+      ? { titolo: 'Annullare questi sacchi portati via?', testo: sacchiTesto(Number(el.dataset.n)) + ' per ' + per + ' alle ' + el.dataset.ora + '. Si può fare solo nei primi 15 minuti.', si: 'Annulla', no: 'Indietro', pericolo: true }
+      : { titolo: 'Annullare questo carico?', testo: sacchiTesto(Number(el.dataset.n)) + ' alle ' + el.dataset.ora + '. Si può fare solo nei primi 15 minuti.', si: 'Annulla il carico', no: 'Indietro', pericolo: true }))) return;
+    await azioneOnline('annullaCarico', { id: el.dataset.id }, per ? 'Annullato' : 'Carico annullato');
   },
   async annullaCoda(el) {
     const op = coda().find(o => o.id === el.dataset.id);
