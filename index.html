@@ -189,6 +189,11 @@ table.dati td:last-child{text-align:right;font-weight:650}
 .oggi-carica{background:rgba(255,255,255,.95);color:var(--inchiostro);border-radius:12px;padding:8px 12px;margin-top:10px;font-weight:600}
 .scelta.tre{grid-template-columns:repeat(3,1fr)}
 .scelta.cinque{grid-template-columns:repeat(5,1fr)}
+.griglia3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.griglia3 .cella{padding:10px;min-width:0;overflow-wrap:anywhere}
+.griglia3 .val{font-size:1.4rem}
+.cella-btn{border:2px solid var(--linea);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.cella-btn[aria-expanded="true"]{border-color:var(--fuoco)}
 .scelta.cinque button{height:52px;font-size:1.3rem}
 .scelta.tre button{font-size:1rem;height:64px;line-height:1.15}
 .scelta.tre button small{display:block;font-size:.75rem;font-weight:600;opacity:.8}
@@ -230,13 +235,18 @@ table.dati td:last-child{text-align:right;font-weight:650}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.3, 1 novembre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.3).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.4, 1 novembre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.4).
+ *  1.4: "Ho preso sacchi" con destinazioni a tag e pulsante "Altro"; chi è
+ *       registrato con il nome di un tag (Romano) lo trova già scelto; scritta
+ *       "Avviseremo Milena del carico di cortesia"; scheda "Altri" con dettagli.
  *  1.3: sacchi portati via (Romano, saletta prove): tolgono dalla giacenza,
  *       non entrano nel consumo; totali della stagione nella pagina Pellet.
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.3';
+const APP_VER = '1.4';
+const MAX_TAG = 25;            // lunghezza massima di una destinazione scritta con "Altro"
+const TAG_VISIBILI = 6;        // oltre alle fisse, quanti tag recenti mostrare come pulsanti
 const MAX_PRELIEVO = 10;       // sacchi portati via scelti con i pulsanti (lo script ne accetta fino a 30)
 const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
@@ -276,6 +286,7 @@ const ui = {
   vista: ls.get(K.vista, 'elenco'),
   soloMiei: ls.get(K.soloMiei, false),
   passate: false,
+  altriAperti: false,
   mese: null,
   anteprima: null,
   ind: { dal: '', al: '', nota: '' }
@@ -319,6 +330,15 @@ function quandoFa(ms) {
 }
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2));
 const sacchiTesto = n => n + (Math.abs(n) === 1 ? ' sacco' : ' sacchi');
+const chiaveTag = t => String(t || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const pulisciTag = t => String(t || '').trim().replace(/\s+/g, ' ').slice(0, MAX_TAG);
+/* Chi deve caricare oggi: chi copre il giorno, se c'è, altrimenti l'appartamento di turno */
+function chiDeveCaricare(v, k) {
+  const t = turnoDel(v.turni, k);
+  if (!t) return null;
+  const c = copertura(v, k, t);
+  return c ? c.da : t.appartamento;
+}
 const elencoO = l => l.length > 1 ? l.slice(0, -1).join(', ') + ' o ' + l[l.length - 1] : (l[0] || '');
 const colore = nome => ((S && S.appartamenti || []).find(a => a.nome === nome) || {}).colore || '#888888';
 const isMio = app => S && S.io && app === S.io.appartamento;
@@ -356,6 +376,17 @@ function chiedi({ titolo, testo = '', si = 'Conferma', no = 'Annulla', pericolo 
       m.querySelectorAll('[data-campo]').forEach(i => { o[i.dataset.campo] = i.value; });
       return o;
     };
+    /* Parti della finestra che compaiono solo con una scelta: data-mostra-se="gruppo=valore" */
+    const aggiornaVisibili = () => {
+      const o = valori();
+      m.querySelectorAll('[data-mostra-se]').forEach(el => {
+        const [gr, val] = el.dataset.mostraSe.split('=');
+        const prima = el.classList.contains('nascosto');
+        el.classList.toggle('nascosto', o[gr] !== val);
+        const campo = el.querySelector('input');
+        if (prima && o[gr] === val && campo) setTimeout(() => campo.focus(), 50);
+      });
+    };
     m.querySelector('.velo').addEventListener('click', e => {
       const v = e.target.closest('[data-valore]');
       if (v) {
@@ -363,6 +394,7 @@ function chiedi({ titolo, testo = '', si = 'Conferma', no = 'Annulla', pericolo 
         if ('multi' in g.dataset) v.setAttribute('aria-pressed', String(v.getAttribute('aria-pressed') !== 'true'));
         else g.querySelectorAll('[data-valore]').forEach(x => x.setAttribute('aria-pressed', String(x === v)));
         const err = $('#erroreFinestra'); if (err) err.textContent = '';
+        aggiornaVisibili();
         return;
       }
       const b = e.target.closest('[data-r]');
@@ -374,6 +406,7 @@ function chiedi({ titolo, testo = '', si = 'Conferma', no = 'Annulla', pericolo 
       } else if (b) chiudi(false);
       else if (e.target.classList.contains('velo')) chiudi(false);
     });
+    aggiornaVisibili();
     const primo = m.querySelector('input[autofocus]');
     if (primo) setTimeout(() => primo.focus(), 50);
   });
@@ -701,7 +734,7 @@ function paginaOggi(v) {
     <button class="btn primario grande" data-az="carica">Ho caricato ${esc(sacchiTesto(ui.sacchi))}</button>
     <p class="tenue piccolo" style="text-align:center;margin:8px 0 0">Il sacco si conta quando lo apri, anche se non entra tutto.</p>
     <button class="link-btn" data-az="dimenticato">Ho dimenticato di registrare un carico</button>
-    ${(v.destinazioni || []).length ? `<button class="link-btn" data-az="prelievo">Ho preso sacchi per ${esc(elencoO(v.destinazioni))}</button>` : ''}
+    <button class="link-btn" data-az="prelievo">Ho preso sacchi</button>
     <h3>Oggi ${totale ? `<span class="tenue">· ${esc(sacchiTesto(totale))}</span>` : ''}</h3>
     ${carichi.length ? `<ul class="lista">${carichi.map(rigaCarico).join('')}</ul>`
       : '<p class="tenue">Nessun carico registrato oggi.</p>'}
@@ -933,16 +966,23 @@ function paginaPellet(v) {
     <button class="btn" data-az="conta">Ho contato i sacchi</button>
   </section>`;
 
-  // Sacchi portati via (Romano, saletta prove…): escono dal locale, non dalla caldaia
-  const dest = v.destinazioni || [];
-  if (dest.length) {
+  // Sacchi portati via: le destinazioni fisse una per una, tutte le altre in "Altri"
+  {
+    const fisse = v.fisse || v.destinazioni || [];
+    const fissa = per => fisse.some(f => chiaveTag(f) === chiaveTag(per));
     const tot = v.portatiVia || [];
+    const altri = tot.filter(t => !fissa(t.per) && t.sacchi > 0);
+    const totAltri = altri.reduce((a, t) => a + t.sacchi, 0);
+    const cella = (nome, n) => `<div class="tenue piccolo">${esc(nome)}</div><div class="val">${esc(n)}</div><div class="tenue piccolo">${n === 1 ? 'sacco' : 'sacchi'}</div>`;
     h += `<section class="scheda">
     <h2>Sacchi portati via</h2>
-    <p class="tenue">Sacchi presi dal locale per ${esc(elencoO(dest))}: tolgono dai sacchi nel locale, ma non contano nel consumo della caldaia.</p>
-    <div class="griglia2">${tot.map(t => `<div class="cella"><div class="tenue piccolo">${esc(t.per)}</div>
-      <div class="val">${esc(t.sacchi)}</div><div class="tenue piccolo">${t.sacchi === 1 ? 'sacco' : 'sacchi'} da inizio stagione</div></div>`).join('')}</div>
-    <div class="btns"><button class="btn primario" data-az="prelievo">Ho preso dei sacchi</button></div>
+    <p class="tenue">Sacchi presi dal locale che non vanno in caldaia: tolgono dai sacchi nel locale, ma non contano nel consumo. Totali da inizio stagione.</p>
+    <div class="griglia3">${fisse.map(f => `<div class="cella">${cella(f, (tot.find(t => chiaveTag(t.per) === chiaveTag(f)) || {}).sacchi || 0)}</div>`).join('')}
+      <button class="cella cella-btn" data-az="altri" aria-expanded="${ui.altriAperti}">${cella('Altri ' + (ui.altriAperti ? '▴' : '▾'), totAltri)}</button></div>
+    ${ui.altriAperti ? (altri.length
+      ? `<ul class="lista">${altri.map(t => `<li><span class="cresce">${esc(t.per)}</span><b>${esc(sacchiTesto(t.sacchi))}</b></li>`).join('')}</ul>`
+      : '<p class="tenue piccolo">Nessun sacco portato via per altre destinazioni.</p>') : ''}
+    <div class="btns"><button class="btn primario" data-az="prelievo">Ho preso sacchi</button></div>
   </section>`;
   }
 
@@ -1137,7 +1177,10 @@ const azioni = {
   sacchi(el) { ui.sacchi = Number(el.dataset.n); ls.set(K.sacchi, ui.sacchi); disegna(); },
   async carica() {
     const n = ui.sacchi;
-    if (!(await chiedi({ titolo: 'Hai caricato ' + sacchiTesto(n) + '?', testo: 'Lo registro a nome di ' + S.io.nome + ', adesso.', si: 'Sì, registra' }))) return;
+    const resp = chiDeveCaricare(vista(), oggiK());
+    const cortesia = resp && !isMio(resp)
+      ? `<div class="banner info" style="margin:10px 0 0"><span>🔔</span><div class="testo">Avviseremo <b style="display:inline">${esc(resp)}</b> del carico di cortesia.</div></div>` : '';
+    if (!(await chiedi({ titolo: 'Hai caricato ' + sacchiTesto(n) + '?', testo: 'Lo registro a nome di ' + S.io.nome + ', adesso.', html: cortesia, si: 'Sì, registra' }))) return;
     const op = { id: uuid(), azione: 'carico', sacchi: n, quando: new Date().toISOString(), codice: codice(), chi: S.io.nome };
     toast('Salvato, lo sto inviando…');
     await accoda(op);
@@ -1199,16 +1242,24 @@ const azioni = {
   },
   /* Sacchi portati via dal locale (Romano, saletta prove…) */
   async prelievo() {
-    const dest = (S && S.destinazioni) || [];
-    if (!dest.length) return toast('Questa funzione non è ancora attiva: avvisa Francesco.', 'avviso');
+    const tutti = (S && S.destinazioni) || [];
+    const fisse = (S && S.fisse) || tutti;
+    const fissa = d => fisse.some(f => chiaveTag(f) === chiaveTag(d));
+    // pulsanti: le fisse, poi gli ultimi tag usati; tutti gli altri si trovano scrivendo in "Altro"
+    const dest = tutti.filter(fissa).concat(tutti.filter(d => !fissa(d)).slice(0, TAG_VISIBILI));
+    const mio = dest.find(d => chiaveTag(d) === chiaveTag(S.io.nome));   // es. Romano: già scelto
     const giorni = [0, 1, 2].map(i => addG(oggiK(), -i));
     const etichette = ['Oggi', 'Ieri', 'L\'altro ieri'];
     const r = await chiedi({
       titolo: 'Sacchi portati via',
       testo: 'Sacchi presi dal locale che non vanno in caldaia.',
-      html: `<div class="campo"><span>Per chi?</span>
+      html: `<div class="campo"><span>Per chi o per cosa?</span>
           <div class="scelta due" data-gruppo="per">${dest.map(d =>
-            `<button data-valore="${esc(d)}" aria-pressed="${dest.length === 1}">${esc(d)}</button>`).join('')}</div></div>
+            `<button data-valore="${esc(d)}" aria-pressed="${d === mio}">${esc(d)}</button>`).join('')}
+            <button data-valore="__altro" aria-pressed="false">Altro…</button></div></div>
+        <label class="campo nascosto" data-mostra-se="per=__altro"><span>Scrivi per cosa (es. Tavernetta amici)</span>
+          <input type="text" data-campo="altro" maxlength="${MAX_TAG}" list="elencoTag" autocomplete="off" autocapitalize="sentences">
+          <datalist id="elencoTag">${tutti.map(d => `<option value="${esc(d)}">`).join('')}</datalist></label>
         <div class="campo"><span>Quanti sacchi?</span>
           <div class="scelta cinque" data-gruppo="sacchi">${Array.from({ length: MAX_PRELIEVO }, (_, i) => i + 1).map(n =>
             `<button data-valore="${n}" aria-pressed="false">${n}</button>`).join('')}</div></div>
@@ -1217,9 +1268,16 @@ const azioni = {
             `<button data-valore="${g}" aria-pressed="${i === 0}">${etichette[i]}<small>${esc(fmtG(g))}</small></button>`).join('')}</div></div>
         <p class="tenue piccolo">Viene registrato a nome di ${esc(S.io.nome)}. Più di ${MAX_PRELIEVO} sacchi? Registrali in due volte.</p>`,
       si: 'Registra',
-      valida: x => !x.per ? 'Scegli per chi sono i sacchi.' : !x.sacchi ? 'Scegli quanti sacchi.' : ''
+      valida: x => !x.per ? 'Scegli per chi sono i sacchi.'
+        : x.per === '__altro' && !pulisciTag(x.altro) ? 'Scrivi per cosa sono i sacchi.'
+        : !x.sacchi ? 'Scegli quanti sacchi.' : ''
     });
     if (!r) return;
+    if (r.per === '__altro') {
+      // se esiste già (maiuscole e spazi a parte) usa quello: niente doppioni nel registro
+      const t = pulisciTag(r.altro);
+      r.per = tutti.find(d => chiaveTag(d) === chiaveTag(t)) || t.charAt(0).toUpperCase() + t.slice(1);
+    }
     const n = Number(r.sacchi), oggi = r.giorno === oggiK();
     const [y, mo, d] = r.giorno.split('-').map(Number);
     const op = { id: uuid(), azione: 'prelievo', sacchi: n, per: r.per,
@@ -1273,6 +1331,7 @@ const azioni = {
   vista(el) { ui.vista = el.dataset.v; ls.set(K.vista, ui.vista); disegna(); },
   soloMiei(el) { ui.soloMiei = el.checked; ls.set(K.soloMiei, ui.soloMiei); disegna(); },
   passate() { ui.passate = !ui.passate; disegna(); },
+  altri() { ui.altriAperti = !ui.altriAperti; disegna(); },
   mese(el) {
     const [y, m] = (ui.mese || oggiK().slice(0, 7)).split('-').map(Number);
     const d = new Date(Date.UTC(y, m - 1 + Number(el.dataset.d), 1));
