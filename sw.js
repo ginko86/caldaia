@@ -5,9 +5,12 @@
  *  2. riceve le notifiche di Firebase quando l'app è chiusa.
  * 1.5: quando arriva una notifica di PROVA, avvisa lo script da solo
  *      (azione "provaArrivata"), così nel foglio si vede che è arrivata.
+ * 1.6: notifiche SILENZIOSE (di notte): lo script manda solo i dati e qui
+ *      vengono mostrate con silent: true, senza suono né vibrazione.
+ *      Il tocco su una notifica apre la pagina indicata (es. Pulizia).
  * Quando si pubblica una nuova versione dell'app, aumentare VERSIONE.
  */
-const VERSIONE = '1.5.0';
+const VERSIONE = '1.6.0';
 const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
 const CACHE = 'caldaia-' + VERSIONE;
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
@@ -26,17 +29,33 @@ const FILE_APP = [
  * numero di una prova, lo rimanda allo script. Non porta il codice personale:
  * il numero da solo basta allo script per scrivere "sì, alle …" nel foglio. */
 self.addEventListener('push', event => {
-  let prova = '';
+  let d = {};
   try {
     const p = event.data ? event.data.json() : null;
-    prova = String((p && p.data && p.data.prova) || '');
+    d = (p && p.data) || {};
   } catch (e) { return; }
-  if (!/^[0-9a-f]{16}$/.test(prova)) return;
-  event.waitUntil(fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ azione: 'provaArrivata', prova: prova })
-  }).catch(() => null));
+  const lavori = [];
+  // 1.6: notifica silenziosa (solo dati): la mostriamo noi, senza suono né vibrazione.
+  // waitUntil tiene vivo il service worker finché la notifica non è mostrata.
+  if (d.silenziosa === '1') {
+    lavori.push(self.registration.showNotification(d.titolo || 'Caldaia', {
+      body: d.testo || '',
+      icon: 'icona-192.png',
+      badge: 'icona-192.png',
+      tag: 'caldaia-' + Date.now(),
+      silent: true,
+      data: { pagina: d.pagina || '' }
+    }));
+  }
+  const prova = String(d.prova || '');
+  if (/^[0-9a-f]{16}$/.test(prova)) {
+    lavori.push(fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ azione: 'provaArrivata', prova: prova })
+    }).catch(() => null));
+  }
+  if (lavori.length) event.waitUntil(Promise.all(lavori));
 });
 
 /* Tocco su una notifica: apre (o riporta in primo piano) l'app.
@@ -47,12 +66,16 @@ self.addEventListener('notificationclick', event => {
   const fcm = dati.FCM_MSG;
   if (fcm && ((fcm.fcmOptions && fcm.fcmOptions.link) || (fcm.notification && fcm.notification.click_action))) return;
   event.notification.close();
+  const pagina = /^[a-z]+$/.test(String(dati.pagina || '')) ? dati.pagina : '';   // 1.6
   event.waitUntil((async () => {
     const finestre = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const f of finestre) {
-      if (f.url.startsWith(self.registration.scope) && 'focus' in f) return f.focus();
+      if (f.url.startsWith(self.registration.scope) && 'focus' in f) {
+        if (pagina) f.postMessage({ tipo: 'apri', pagina: pagina });
+        return f.focus();
+      }
     }
-    return self.clients.openWindow(self.registration.scope);
+    return self.clients.openWindow(self.registration.scope + (pagina ? '#' + pagina : ''));
   })());
 });
 
@@ -73,11 +96,13 @@ try {
   messaging.onBackgroundMessage(payload => {
     if (payload.notification) return;
     const d = payload.data || {};
+    if (d.silenziosa === '1') return;            // 1.6: già mostrata dall'ascoltatore "push" qui sopra
     return self.registration.showNotification(d.titolo || 'Caldaia', {
       body: d.testo || '',
       icon: 'icona-192.png',
       badge: 'icona-192.png',
-      tag: 'caldaia-' + Date.now()
+      tag: 'caldaia-' + Date.now(),
+      data: { pagina: d.pagina || '' }
     });
   });
 } catch (e) {

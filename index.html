@@ -164,9 +164,9 @@ table.dati td:last-child{text-align:right;font-weight:650}
 
 /* Navigazione */
 .schede-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--scheda);border-top:1px solid var(--linea);
-  display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .schede-nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:12px;font-size:.8rem;font-weight:650;color:var(--tenue);cursor:pointer}
-.schede-nav button svg{width:28px;height:28px}
+.schede-nav button svg{width:26px;height:26px}
 .schede-nav button[aria-current="page"]{color:var(--fuoco);background:var(--fuoco-chiaro)}
 
 /* Messaggi */
@@ -206,6 +206,26 @@ ol.passi{margin:4px 0 0;padding-left:24px}
 ol.passi li{padding:5px 0}
 .prove{margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)}
 .vuoto img{width:84px;height:84px;border-radius:20px}
+/* 1.6 – pulizia */
+.semaforo{border-radius:var(--raggio);padding:14px 16px;margin:12px 0;background:var(--avviso-chiaro);border:2px solid var(--avviso);display:flex;gap:12px;align-items:flex-start}
+.semaforo .luce{width:22px;height:22px;border-radius:50%;background:#EAB308;flex:none;margin-top:3px;box-shadow:0 0 0 4px rgba(234,179,8,.25)}
+.semaforo b{display:block;font-size:1.1rem}
+.verde-piccolo{font-size:.9rem;color:var(--tenue);margin:-4px 2px 8px;display:flex;align-items:center;gap:8px}
+.verde-piccolo i{width:10px;height:10px;border-radius:50%;background:var(--ok);display:inline-block}
+.passo{background:var(--carta);border-radius:14px;padding:12px;margin-top:12px}
+.passo .btn{margin-top:10px}
+.fonte{font-size:.75rem;color:var(--tenue);margin-top:6px}
+.scelta.notti{grid-template-columns:repeat(3,1fr)}
+.scelta.notti button{height:70px;font-size:1rem;line-height:1.15}
+.scelta.notti button small{display:block;font-size:.78rem;font-weight:600;opacity:.85}
+.scelta.cassetto{grid-template-columns:repeat(3,1fr)}
+.scelta.cassetto button,.scelta.giudizio button{height:52px;font-size:.98rem}
+.scelta.giudizio{grid-template-columns:repeat(3,1fr)}
+.scelta.giudizio4{grid-template-columns:repeat(4,1fr)}
+.scelta.giudizio4 button{height:52px;font-size:.88rem}
+.voce-man{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--linea)}
+.voce-man:first-child{border-top:0}
+.voce-man .cresce{flex:1;min-width:0}
 </style>
 </head>
 <body>
@@ -229,6 +249,8 @@ ol.passi li{padding:5px 0}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Turni</button>
   <button data-az="vai" data-p="pellet">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-1 3 2 3v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9l2-3z"/><path d="M8 6h8M9 14h6"/></svg>Pellet</button>
+  <button data-az="vai" data-p="pulizia">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2.5 12.5 11"/><path d="M8 11h9l1.5 10.5H5.5z"/><path d="M9.5 15.5 9 21.5M12.5 15.5v6M15.5 15.5l.5 6"/></svg>Pulizia</button>
   <button data-az="vai" data-p="caldaia">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c1 3.5 5.5 5.5 5.5 10.5a5.5 5.5 0 0 1-11 0c0-2.4 1.3-4 2.5-5 .2 2 1.2 3 2 3.3C10.7 8.7 11 5 12 2.5z"/></svg>Caldaia</button>
 </nav>
@@ -238,8 +260,11 @@ ol.passi li{padding:5px 0}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.5, 2 novembre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.5).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.6, novembre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.6).
+ *  1.6: pagina Pulizia (pulizia completa con semaforo, cassetto cenere, pulizie
+ *       del libretto), barra in basso a 5 voci, semaforo nella pagina Oggi,
+ *       notifiche silenziose di notte, apertura della pagina dalla notifica.
  *  1.5: turni da lunedì a domenica (vista Mese); prova delle notifiche nelle
  *       Impostazioni ("Prova adesso" e "Prova con l'app chiusa"); pagina
  *       Caldaia con la procedura di accensione a mano.
@@ -250,7 +275,7 @@ ol.passi li{padding:5px 0}
  *       non entrano nel consumo; totali della stagione nella pagina Pellet.
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.5';
+const APP_VER = '1.6';
 const MAX_TAG = 25;            // lunghezza massima di una destinazione scritta con "Altro"
 const TAG_VISIBILI = 6;        // oltre alle fisse, quanti tag recenti mostrare come pulsanti
 const MAX_PRELIEVO = 10;       // sacchi portati via scelti con i pulsanti (lo script ne accetta fino a 30)
@@ -530,12 +555,14 @@ function svuotaCoda() {
       if (op.sacchi != null) params.sacchi = op.sacchi;   // carico, prelievo e conta
       if (op.per) params.per = op.per;                     // prelievo: per chi
       if (op.nota) params.nota = op.nota;
+      if (op.extra) Object.assign(params, op.extra);       // 1.6: azioni della pulizia
       let r;
       try { r = await apiAzione(op.codice, op.azione, params); }
       catch (e) { if (e.rete) senzaRete = true; break; }
       if (!r.ok) {
         // problemi passeggeri: si riprova più tardi
         if (/lock|timeout|tempo|riprova|servizio|service|quota|codice/i.test(r.errore || '')) break;
+        erroriCoda[op.id] = r.errore;
         toast('Non registrato (' + descrOp(op) + '): ' + r.errore, 'errore', 7000);
       } else {
         inviati++;
@@ -551,6 +578,7 @@ function svuotaCoda() {
 
 function descrOp(op) {
   const ora = ' alle ' + oraLocale(new Date(op.quando));
+  if (DESCR_PULIZIA[op.azione]) return DESCR_PULIZIA[op.azione] + ora;
   if (op.azione === 'carico') return sacchiTesto(op.sacchi) + ora;
   if (op.azione === 'prelievo') return sacchiTesto(op.sacchi) + ' per ' + op.per + ora;
   if (op.azione === 'conta') return 'conta dei sacchi' + ora;
@@ -578,6 +606,8 @@ function vista() {
       v.sacchi.pallet -= 1;
     } else if (o.azione === 'conta') {
       v.sacchi.locale = o.sacchi;
+    } else if (DESCR_PULIZIA[o.azione] && v.pulizia && !v.pulizia.errore) {
+      applicaPuliziaInCoda(v.pulizia, o);                  // 1.6
     }
   }
   if (v.sacchi.media > 0) v.sacchi.giorniRestanti = Math.round(v.sacchi.locale / v.sacchi.media * 10) / 10;
@@ -605,7 +635,8 @@ async function caricaFirebase() {
     const titolo = (p.notification && p.notification.title) || (p.data && p.data.titolo) || 'Caldaia';
     const testo = (p.notification && p.notification.body) || (p.data && p.data.testo) || '';
     toast(titolo + ': ' + testo, '', 7000);
-    try { (await navigator.serviceWorker.ready).showNotification(titolo, { body: testo, icon: 'icona-192.png', badge: 'icona-192.png' }); } catch (e) {}
+    const silenziosa = !!(p.data && p.data.silenziosa === '1');                  // 1.6
+    try { (await navigator.serviceWorker.ready).showNotification(titolo, { body: testo, icon: 'icona-192.png', badge: 'icona-192.png', silent: silenziosa, data: { pagina: (p.data && p.data.pagina) || '' } }); } catch (e) {}
     aggiorna({ silenzioso: true });
   });
   fb = { m, messaging };
@@ -670,7 +701,7 @@ function disegna() {
     return;
   }
   const v = vista();
-  const f = { oggi: paginaOggi, turni: paginaTurni, pellet: paginaPellet, caldaia: paginaCaldaia, impostazioni: paginaImpostazioni }[pagina] || paginaOggi;
+  const f = { oggi: paginaOggi, turni: paginaTurni, pellet: paginaPellet, pulizia: paginaPulizia, caldaia: paginaCaldaia, impostazioni: paginaImpostazioni }[pagina] || paginaOggi;
   main.innerHTML = f(v);
 }
 
@@ -689,6 +720,7 @@ function paginaOggi(v) {
   const corrente = turnoDel(v.turni, oggi);
   const primo = (v.turni || [])[0];
   let h = bannerDati();
+  h += semaforoOggi(v);                                    // 1.6: solo se giallo
 
   // Turno della settimana (ed eventuale giorno coperto da un altro)
   if (corrente) {
@@ -702,6 +734,7 @@ function paginaOggi(v) {
       ${nota ? `<div class="date">${esc(nota)}</div>` : ''}
       ${cop ? `<div class="oggi-carica">Oggi carica <b>${esc(cop.da)}</b>, al posto di ${esc(corrente.appartamento)}</div>` : ''}
       ${tocca ? `<span class="tuo">${cop ? 'Oggi tocca a te' : 'Tocca a te'}</span>` : ''}</section>`;
+    if (v.pulizia && v.pulizia.semaforo === 'verde' && v.caldaiaAccesa) h += '<div class="verde-piccolo"><i></i>caldaia in funzione</div>';
   } else if (primo && primo.dal > oggi) {
     // prima dell'inizio: carica già chi ha il primo turno
     h += `<section class="turno-ora" style="--c:${esc(colore(primo.appartamento))}">
@@ -746,6 +779,7 @@ function paginaOggi(v) {
       : '<p class="tenue">Nessun carico registrato oggi.</p>'}
   </section>`;
   h += avvisoIeri(v);
+  h += puliziaVicinaOggi(v);                               // 1.6
 
   // Sacchi nel locale
   h += schedaSerbatoio(v, true);
@@ -1048,13 +1082,14 @@ const ALLARMI = [
     'Controlla tramoggia (vuota?) e braciere (troppa cenere o «sassi» di pellet vetrificato). Pulisci il braciere e riaccendi seguendo «Accensione». Se succede spesso, avvisa Francesco.'],
   ['Sond', 'Le sonde di temperatura leggono valori sbagliati.', 'fra', 'Avvisa Francesco: serve un controllo.']
 ];
+/* 1.6: pulizie del libretto ALP45 (pag. 24–28), con la stessa chiave dello script */
 const PULIZIE = [
-  ['Ogni 3–4 giorni', 'Togliere la cenere dal fondo del braciere. Se ci sono «sassi» (cenere vetrificata), toglierli.'],
-  ['Ogni settimana', 'Aspirare la camera di combustione e scovolare le alette con la ventola accesa. Controllare che i fori del braciere siano liberi (spazzola d\'acciaio).'],
-  ['Ogni mese', 'Camera fumi dal portello in basso: a caldaia fredda e senza corrente.'],
-  ['Ogni 1–3 mesi', 'Pulizia della ventola aspirazione fumi (Francesco).'],
-  ['Ogni anno', 'Controllo delle coclee; controllo generale e libretto d\'impianto con il tecnico.'],
-  ['Fine stagione', 'Svuotare tramoggia e coclee, lasciare le porte socchiuse.']
+  ['braciere', 'Ogni 3–4 giorni', 'Togliere la cenere dal fondo del braciere. Se ci sono «sassi» (cenere vetrificata), toglierli.'],
+  ['settimana', 'Ogni settimana', 'Aspirare la camera di combustione e scovolare le alette con la ventola accesa. Controllare che i fori del braciere siano liberi (spazzola d\'acciaio).'],
+  ['camerafumi', 'Ogni mese', 'Camera fumi dal portello in basso: a caldaia fredda e senza corrente.'],
+  ['ventola', 'Ogni 1–3 mesi', 'Pulizia della ventola aspirazione fumi (Francesco).'],
+  ['anno', 'Ogni anno', 'Controllo delle coclee; controllo generale e libretto d\'impianto con il tecnico.'],
+  ['fine', 'Fine stagione', 'Svuotare tramoggia e coclee, lasciare le porte socchiuse.']
 ];
 const ACCENSIONE = [
   ['Prima di cominciare', [
@@ -1108,8 +1143,8 @@ function paginaCaldaia() {
     </div></details>
     <details><summary>📟 Le scritte del display</summary><div class="contenuto">${codici(STATI, false)}</div></details>
     <details><summary>🧹 Pulizie</summary><div class="contenuto">
-      <p class="piccolo"><b>Sempre:</b> guanti, mascherina, e mai pulire con la caldaia accesa usando prodotti infiammabili. Per camera fumi e ventola: caldaia fredda e interruttore su 0.</p>
-      <ul class="lista">${PULIZIE.map(p => `<li><div><b>${esc(p[0])}</b><div class="piccolo">${esc(p[1])}</div></div></li>`).join('')}</ul></div></details>
+      <p class="piccolo">Le pulizie, con il semaforo e il cassetto cenere, sono nella pagina <b>Pulizia</b>.</p>
+      <button class="btn piccolo" data-az="vai" data-p="pulizia">Apri la pagina Pulizia</button></div></details>
     <details><summary>🔧 Se qualcosa non va</summary><div class="contenuto">
       <ul class="lista">${PROBLEMI.map(p => `<li><div><b>${esc(p[0])}</b><div class="piccolo">${esc(p[1])}</div></div></li>`).join('')}</ul></div></details>
     <details><summary>📋 Dati e contatti</summary><div class="contenuto">
@@ -1128,6 +1163,164 @@ function paginaCaldaia() {
     </div></details>
   </section>`;
 }
+
+
+/* =====================================================================
+ *  PULIZIA (1.6)
+ *  Le azioni fatte nel locale (Spenta, Pulita, Riaccesa, cassetto, "fatto oggi")
+ *  entrano nella coda come i carichi: lì il telefono prende male. "Me ne occupo io",
+ *  "Non posso più" e "Ho fatto la pulizia" invece richiedono la rete.
+ * ===================================================================== */
+const DESCR_PULIZIA = {
+  puliziaSpenta: 'caldaia spenta per pulizia', puliziaPulita: 'pulizia completa', puliziaRiaccesa: 'caldaia riaccesa',
+  cassettoSvuotato: 'cassetto cenere svuotato', puliziaManuale: 'pulizia del libretto'
+};
+const CASSETTO_VOCI = ['un quarto', 'metà', 'tre quarti', 'pieno', 'traboccava'];
+const NOMI_TIPO = { PRESA: 'Me ne occupo io', LASCIATA: 'Non posso più', SPENTA: 'Spenta per pulizia', PULITA: 'Pulita', RIACCESA: 'Riaccesa',
+  CASSETTO: 'Cassetto svuotato', FATTA: 'Pulizia inserita a mano', MANUALE: 'Dal libretto' };
+const erroriCoda = {};
+const giornoRel = k => k === oggiK() ? 'oggi' : k === addG(oggiK(), -1) ? 'ieri' : fmtG(k);
+const notteTesto = k => GGL[dk(k).getUTCDay()] + ' ' + dk(k).getUTCDate();
+const temp = t => (t == null || t === '' ? '' : String(t).replace('.', ',') + ' °C');
+
+/* Stato "come sarà" con le azioni della pulizia ancora in coda */
+function applicaPuliziaInCoda(pu, o) {
+  const d = new Date(o.quando), q = { persona: o.chi, giorno: chiaveLocale(d), ora: oraLocale(d) };
+  pu.inAttesa = true;
+  if (o.azione === 'puliziaSpenta') {
+    pu.semaforo = 'giallo'; pu.fase = 'spenta';
+    pu.spenta = Object.assign(q, { pulisce: pu.presa ? pu.presa.persona : o.chi });
+  } else if (o.azione === 'puliziaPulita') {
+    pu.bruciati = 0; pu.cassetto.sacchi = 0;
+    pu.ultima = Object.assign({ tipo: 'PULITA' }, q);
+    if (o.extra && o.extra.riaccesa) { pu.semaforo = 'verde'; pu.fase = 'normale'; pu.presa = null; }
+    else if (pu.semaforo === 'giallo') { pu.fase = 'pulita'; pu.pulita = q; }
+    else { pu.fase = 'normale'; pu.presa = null; }
+  } else if (o.azione === 'puliziaRiaccesa') {
+    pu.semaforo = 'verde'; pu.fase = 'normale'; pu.presa = null;
+  } else if (o.azione === 'cassettoSvuotato') {
+    pu.cassetto.sacchi = 0;
+  } else if (o.azione === 'puliziaManuale') {
+    const m = (pu.manuale || []).find(x => x.voce === (o.extra || {}).voce);
+    if (m) m.ultima = q.giorno;
+  }
+}
+
+async function azioneLocale(azione, extra, msgOk) {
+  const op = { id: uuid(), azione, quando: new Date().toISOString(), codice: codice(), chi: S.io.nome, extra: extra || {} };
+  toast('Salvato, lo sto inviando…');
+  await accoda(op);
+  if (erroriCoda[op.id]) { delete erroriCoda[op.id]; return; }      // l'errore è già stato mostrato
+  if (coda().some(o => o.id === op.id)) toast('Niente campo: salvato sul telefono, partirà da solo appena possibile.', 'avviso', 6500);
+  else toast(msgOk || 'Registrato ✓', 'ok');
+}
+
+function semaforoBox(pu) {
+  if (!pu || pu.errore || pu.semaforo !== 'giallo') return '';
+  const sp = pu.spenta || {}, pl = pu.pulita;
+  const riga = pu.fase === 'pulita' && pl
+    ? `Pulita da ${esc(pl.persona)} ${esc(giornoRel(pl.giorno))} alle ${esc(pl.ora)}: manca solo la riaccensione.`
+    : `${esc(sp.persona || '')}${sp.giorno ? ', ' + esc(giornoRel(sp.giorno)) + ' alle ' + esc(sp.ora) : ''}${sp.pulisce ? ' · la pulisce ' + esc(sp.pulisce) : ''}`;
+  return `<div class="semaforo"><span class="luce" aria-hidden="true"></span><div style="flex:1"><b>Caldaia spenta per pulizia</b>${riga}
+    ${pu.inAttesa ? ' <span class="etic attesa">da inviare</span>' : ''}</div></div>`;
+}
+function semaforoOggi(v) {
+  const box = semaforoBox(v.pulizia);
+  return box ? box.replace('</div></div>', '<div class="btns"><button class="btn piccolo" data-az="vai" data-p="pulizia">Pagina Pulizia</button></div></div></div>') : '';
+}
+function puliziaVicinaOggi(v) {
+  const pu = v.pulizia;
+  if (!pu || pu.errore || pu.semaforo !== 'verde') return '';
+  const mancano = pu.notte && pu.notte.giorno ? diffG(oggiK(), pu.notte.giorno) : 99;
+  let testo = '';
+  if (pu.fase === 'vicina') testo = `<b>Pulizia vicina</b>Notte consigliata: ${esc(notteTesto(pu.notte.giorno))}${pu.notte.tmin != null ? ' (' + esc(temp(pu.notte.tmin)) + ')' : ''}. Chi se ne occupa?`;
+  else if (pu.fase === 'presa' && pu.presa && diffG(oggiK(), pu.presa.notte) <= 3) testo = `<b>Pulizia: se ne occupa ${esc(pu.presa.persona)}</b>Spegnimento ${esc(notteTesto(pu.presa.notte))} sera, pulizia ${esc(notteTesto(addG(pu.presa.notte, 1)))} mattina.`;
+  if (!testo || (pu.fase === 'vicina' && mancano > 3 && !pu.avvisoPartito)) return '';
+  return `<div class="banner info"><span>🧹</span><div class="testo">${testo}
+    <div class="btns"><button class="btn piccolo primario" data-az="vai" data-p="pulizia">Apri</button></div></div></div>`;
+}
+
+function passoPulizia(pu) {
+  const io = S.io, oggi = oggiK();
+  const fonte = pu.fonte === 'senza previsioni' ? '<div class="fonte">Senza previsioni meteo: la notte è stimata dai sacchi.</div>'
+    : `<div class="fonte">${pu.fonte === 'previsioni di ieri' ? 'Previsioni di ieri · ' : ''}Previsioni: Open-Meteo.com</div>`;
+  const notte = pu.notte && pu.notte.giorno;
+  switch (pu.fase) {
+    case 'vicina':
+      return `<div class="passo"><b>Pulizia vicina</b>
+        <p>Notte consigliata: <b>${esc(notteTesto(notte))}</b>${pu.notte.tmin != null ? ' – previsti ' + esc(temp(pu.notte.tmin)) + ', la più mite dei prossimi giorni secondo le previsioni meteo' : ''}.</p>
+        <p class="tenue piccolo">Chi se ne occupa tocca il pulsante entro le ${esc(pu.limitePresa)} della sera scelta. La sera, chi carica riceve il promemoria per spegnere.</p>
+        <button class="btn primario grande" data-az="puliziaPresa">Me ne occupo io</button>${fonte}</div>`;
+    case 'presa': {
+      const p = pu.presa, mia = p.persona === io.nome, sera = oggi >= p.notte, dopo = oggi > p.notte;
+      return `<div class="passo"><b>Se ne occupa ${esc(p.persona)}${mia ? ' (tu)' : ''}</b>
+        <p>Spegnimento <b>${esc(notteTesto(p.notte))} sera</b> entro le 21, pulizia <b>${esc(notteTesto(addG(p.notte, 1)))} mattina</b> a caldaia fredda.</p>
+        ${sera ? '<button class="btn primario grande" data-az="spenta">Spenta per pulizia</button>' : '<p class="tenue piccolo">Quella sera chi carica riceve il promemoria per spegnere.</p>'}
+        ${dopo ? '<button class="btn" data-az="pulita">Pulita</button>' : ''}
+        ${mia || io.admin ? '<button class="btn pericolo" data-az="puliziaLasciata">Non posso più</button>' : ''}</div>`;
+    }
+    case 'spenta':
+      return semaforoBox(pu) + `<button class="btn primario grande" data-az="pulita">Pulita</button>
+        <button class="btn" style="margin-top:10px" data-az="riaccesa">Riaccesa (senza pulizia)</button>`;
+    case 'pulita':
+      return semaforoBox(pu) + '<button class="btn primario grande" data-az="riaccesa">Riaccesa</button>';
+    default:
+      return `<div class="passo"><p>${notte ? 'Prossima pulizia verso la notte di <b>' + esc(notteTesto(notte)) + '</b>' + (pu.notte.tmin == null ? ' (stima dai sacchi)' : '') + '.' : ''}
+        L'avviso arriva a tutti 3 giorni prima.</p>
+        ${(pu.alternative || []).length || pu.notte.tmin != null ? '<button class="btn" data-az="puliziaPresa">Me ne occupo io</button>' : ''}</div>`;
+  }
+}
+
+function paginaPulizia(v) {
+  const pu = v.pulizia;
+  let h = bannerDati();
+  if (!pu) return h + '<section class="scheda"><h2>Pulizia</h2><p class="tenue">Questa pagina ha bisogno dello script 1.6. Avvisa Francesco.</p></section>';
+  if (pu.errore) return h + `<div class="banner errore"><div class="testo"><b>Non riesco a leggere la pulizia</b>${esc(pu.errore)}. Avvisa Francesco.</div></div>`;
+  const perc = Math.max(0, Math.min(100, pu.bruciati / pu.soglia * 100));
+  const cls = pu.bruciati >= pu.finestra.sacchiA ? 'critico' : pu.bruciati >= pu.finestra.sacchiDa ? 'basso' : '';
+  const ult = pu.ultima || {};
+  const ultima = ult.tipo === 'ACCENSIONE' ? `dall'accensione (${esc(fmtG(ult.giorno))})`
+    : `dall'ultima pulizia: ${esc(fmtG(ult.giorno))}${ult.persona ? ', ' + esc(ult.persona) : ''}`;
+  h += `<section class="scheda"><h2>Pulizia completa</h2>
+    <div class="serbatoio ${cls}" role="img" aria-label="${esc(pu.bruciati)} sacchi su ${esc(pu.soglia)}"><div style="width:${perc}%"></div></div>
+    <p style="font-size:1.1rem"><b>${esc(pu.bruciati)} su ${esc(pu.soglia)} sacchi</b> ${ultima}</p>
+    <p class="tenue piccolo">Si pulisce tra ${esc(pu.finestra.sacchiDa)} e ${esc(pu.finestra.sacchiA)} sacchi, a caldaia spenta e fredda: sassi e cenere dal braciere, scovolo della camera, aspirazione. Si svuota sempre anche il cassetto cenere.</p>
+    ${passoPulizia(pu)}
+    ${pu.semaforo === 'verde' ? '<button class="link-btn" data-az="puliziaFatta">Ho fatto la pulizia senza l\'app</button>' : ''}
+  </section>`;
+
+  const c = pu.cassetto || {};
+  h += `<section class="scheda"><h2>Cassetto cenere</h2>
+    <p style="font-size:1.1rem"><b>${esc(sacchiTesto(c.sacchi || 0))}</b> dall'ultimo svuotamento</p>
+    <p class="tenue">${c.capienza ? `Capienza stimata: circa <b>${esc(c.capienza)} sacchi</b>. Quando ci si avvicina, chi è di turno riceve un avviso.`
+      : `In apprendimento (${esc(c.stime)} ${c.stime === 1 ? 'svuotamento' : 'svuotamenti'} su ${esc(c.minime)}): dopo ${esc(c.minime)} svuotamenti l'app stima da sola quanto tiene.`}</p>
+    <button class="btn" data-az="cassetto">Ho svuotato il cassetto</button>
+    <p class="tenue piccolo">Si può svuotare anche a caldaia accesa, quando capita.</p></section>`;
+
+  h += `<section class="scheda"><h2>Dal libretto</h2>
+    <p class="tenue piccolo">Pulizie del libretto ALP45 (pag. 24–28), solo come indicazione: nessun avviso. Sempre guanti e mascherina; per camera fumi e ventola caldaia fredda e interruttore su 0.</p>
+    <div>${PULIZIE.map(([voce, quando, testo]) => {
+      const u = ((pu.manuale || []).find(m => m.voce === voce) || {}).ultima;
+      return `<div class="voce-man"><div class="cresce"><b>${esc(quando)}</b><div class="piccolo">${esc(testo)}</div>
+        <div class="tenue piccolo">${u ? 'Ultima volta: ' + esc(fmtG(u)) : 'Mai segnata'}</div></div>
+        <button class="btn mini" data-az="manuale" data-voce="${esc(voce)}">Fatto oggi</button></div>`;
+    }).join('')}</div>
+    <p class="tenue piccolo">In casa si fa la pulizia completa ogni circa 15 giorni, che comprende in parte le voci settimanali.</p></section>`;
+
+  const st = pu.storico || [];
+  const nomeVoce = voce => ((PULIZIE.find(x => x[0] === voce) || [])[1] || '').toLowerCase();
+  h += `<section class="scheda"><h2>Storico</h2>${st.length ? `<ul class="lista">${st.map(r => {
+    const det = r.tipo === 'PULITA' || r.tipo === 'FATTA'
+      ? [r.sporco && r.sporco + ' sporco', r.sassi && 'sassi ' + r.sassi, r.cassetto && 'cassetto ' + r.cassetto].filter(Boolean).join(', ')
+      : r.tipo === 'CASSETTO' ? 'era ' + r.cassetto : r.tipo === 'MANUALE' ? nomeVoce(r.voce) : r.tipo === 'PRESA' && r.notte ? 'notte di ' + notteTesto(r.notte) : '';
+    return `<li><span class="ora">${esc(fmtG(r.giorno, false))}<br>${esc(r.ora)}</span><span class="cresce"><b>${esc(NOMI_TIPO[r.tipo] || r.tipo)}</b> · ${esc(r.persona)}
+      ${det ? `<div class="tenue piccolo">${esc(det)}</div>` : ''}</span></li>`;
+  }).join('')}</ul>` : '<p class="tenue">Ancora niente.</p>'}</section>`;
+  return h;
+}
+
+const gruppo = (nome, valori, scelto, cls) => `<div class="scelta ${cls || 'giudizio'}" data-gruppo="${nome}">${valori.map(x =>
+  `<button data-valore="${esc(x)}" aria-pressed="${x === scelto}">${esc(x)}</button>`).join('')}</div>`;
 
 /* ---------- IMPOSTAZIONI ---------- */
 function paginaImpostazioni(v) {
@@ -1165,7 +1358,7 @@ function paginaImpostazioni(v) {
     <section class="scheda">
       <h2>I miei promemoria</h2>
       <label class="spunta"><input type="checkbox" id="prefProm" ${io.promemoria ? 'checked' : ''}> Promemoria del carico, la sera del mio turno</label>
-      <label class="campo"><span>A che ora</span><input type="time" id="prefOra" value="${esc(io.ora)}"></label>
+      <label class="campo"><span>A che ora (tra le 7:00 e le 20:45)</span><input type="time" id="prefOra" min="07:00" max="20:45" step="900" value="${esc(io.ora)}"></label>
       <p class="tenue piccolo">Arriva solo se quel giorno nessuno ha ancora caricato.</p>
       <label class="spunta"><input type="checkbox" id="prefPre" ${io.preavviso ? 'checked' : ''}> Avvisami prima che inizi il mio turno</label>
       <label class="campo"><span>Quanti giorni prima</span><select id="prefGiorni">
@@ -1454,6 +1647,82 @@ const azioni = {
     if (!(await chiedi({ titolo: 'Togliere questa assenza?', testo: 'Il calendario verrà ricalcolato.', si: 'Togli', pericolo: true }))) return;
     await azioneOnline('indispRimuovi', { id: el.dataset.id }, 'Assenza tolta');
   },
+  /* ---------- 1.6: pulizia ---------- */
+  async puliziaPresa() {
+    const pu = vista().pulizia;
+    if (!pu || !pu.notte) return;
+    const notti = [pu.notte].concat(pu.alternative || []).sort((a, b) => a.giorno.localeCompare(b.giorno));
+    const r = await chiedi({
+      titolo: 'Te ne occupi tu?',
+      testo: 'Scegli la notte: la sera si spegne la caldaia, la mattina dopo si pulisce a caldaia fredda.',
+      html: `<div class="scelta notti" data-gruppo="notte">${notti.map(n => `<button data-valore="${esc(n.giorno)}" aria-pressed="${n.giorno === pu.notte.giorno}">${esc(GG[dk(n.giorno).getUTCDay()])} ${dk(n.giorno).getUTCDate()}<small>${n.tmin != null ? esc(temp(n.tmin)) : 'stima'}${n.giorno === pu.notte.giorno ? ' · consigliata' : ''}</small></button>`).join('')}</div>
+        <p class="tenue piccolo">Temperatura = minima prevista il mattino della pulizia. Previsioni: Open-Meteo.com</p>`,
+      si: 'Me ne occupo io',
+      valida: x => x.notte ? '' : 'Scegli la notte.'
+    });
+    if (!r) return;
+    await azioneOnline('puliziaPresa', { notte: r.notte, id: uuid() }, 'Grazie! Gli altri ricevono un avviso.');
+  },
+  async puliziaLasciata() {
+    if (!(await chiedi({ titolo: 'Non puoi più occuparti della pulizia?', testo: 'Gli altri ricevono un avviso e qualcun altro può prenderla.', si: 'Non posso più', no: 'Indietro', pericolo: true }))) return;
+    await azioneOnline('puliziaLasciata', { id: uuid() }, 'Fatto: gli altri ricevono un avviso.');
+  },
+  async spenta() {
+    if (!(await chiedi({ titolo: 'Hai spento la caldaia per la pulizia?', testo: 'Tutti vedono il semaforo giallo e ricevono un avviso.', si: 'Sì, è spenta' }))) return;
+    await azioneLocale('puliziaSpenta', {}, 'Caldaia spenta per pulizia ✓');
+  },
+  async pulita() {
+    const r = await chiedi({
+      titolo: 'Com\'era la caldaia?',
+      html: `<div class="campo"><span>Quanto era sporca?</span>${gruppo('sporco', ['poco', 'normale', 'tanto'])}</div>
+        <div class="campo"><span>Quanti sassi nel braciere?</span>${gruppo('sassi', ['pochi', 'normali', 'tanti'])}</div>
+        <div class="campo"><span>Quanto era pieno il cassetto cenere? (si svuota sempre)</span>${gruppo('cassetto', CASSETTO_VOCI, null, 'cassetto')}</div>
+        <div class="campo"><span>Hai già riacceso la caldaia?</span>
+          <div class="scelta due" data-gruppo="riaccesa"><button data-valore="no" aria-pressed="true">Non ancora</button><button data-valore="si" aria-pressed="false">Sì, è accesa</button></div></div>`,
+      si: 'Registra',
+      valida: x => !x.sporco || !x.sassi || !x.cassetto ? 'Rispondi alle tre domande: servono a capire ogni quanto pulire.' : ''
+    });
+    if (!r) return;
+    await azioneLocale('puliziaPulita', { sporco: r.sporco, sassi: r.sassi, cassetto: r.cassetto, riaccesa: r.riaccesa === 'si' },
+      r.riaccesa === 'si' ? 'Pulita e riaccesa ✓ Grazie!' : 'Pulita ✓ Quando la riaccendi, tocca «Riaccesa».');
+  },
+  async riaccesa() {
+    if (!(await chiedi({ titolo: 'La caldaia è ripartita?', testo: 'Dal vetro spia si vede una fiamma viva in tutto il braciere. Tutti ricevono un avviso.', si: 'Sì, riaccesa' }))) return;
+    await azioneLocale('puliziaRiaccesa', {}, 'Riaccesa ✓');
+  },
+  async cassetto() {
+    const r = await chiedi({
+      titolo: 'Quanto era pieno il cassetto?',
+      html: gruppo('cassetto', CASSETTO_VOCI, null, 'cassetto') + '<p class="tenue piccolo">Da questa risposta l\'app impara quanto tiene il cassetto.</p>',
+      si: 'Registra', valida: x => x.cassetto ? '' : 'Scegli quanto era pieno.'
+    });
+    if (!r) return;
+    await azioneLocale('cassettoSvuotato', { cassetto: r.cassetto }, 'Cassetto svuotato ✓');
+  },
+  async manuale(el) {
+    const v = PULIZIE.find(x => x[0] === el.dataset.voce);
+    if (!v) return;
+    if (!(await chiedi({ titolo: 'Fatto oggi?', testo: v[1] + ': ' + v[2], si: 'Sì, fatto' }))) return;
+    await azioneLocale('puliziaManuale', { voce: v[0] }, 'Segnato ✓');
+  },
+  async puliziaFatta() {
+    const oggi = oggiK();
+    const nr = 'non ricordo';
+    const r = await chiedi({
+      titolo: 'Pulizia fatta senza l\'app',
+      testo: 'Indica quando: il contatore dei sacchi riparte da lì.',
+      html: `<div class="campi2"><label class="campo"><span>Giorno</span><input type="date" data-campo="giorno" min="${addG(oggi, -14)}" max="${oggi}" value="${oggi}"></label>
+        <label class="campo"><span>Ora, più o meno</span><input type="time" data-campo="ora" value="09:00"></label></div>
+        <div class="campo"><span>Quanto era sporca?</span>${gruppo('sporco', ['poco', 'normale', 'tanto', nr], nr, 'giudizio4')}</div>
+        <div class="campo"><span>Sassi nel braciere?</span>${gruppo('sassi', ['pochi', 'normali', 'tanti', nr], nr, 'giudizio4')}</div>
+        <div class="campo"><span>Cassetto cenere?</span>${gruppo('cassetto', CASSETTO_VOCI.concat([nr]), nr, 'cassetto')}</div>`,
+      si: 'Registra',
+      valida: x => !/^\d{4}-\d{2}-\d{2}$/.test(x.giorno || '') ? 'Scegli il giorno.' : !/^\d{2}:\d{2}$/.test(x.ora || '') ? 'Scrivi un\'ora, anche approssimativa.' : ''
+    });
+    if (!r) return;
+    const via = x => (x === nr ? '' : x || '');
+    await azioneOnline('puliziaFatta', { giorno: r.giorno, ora: r.ora, sporco: via(r.sporco), sassi: via(r.sassi), cassetto: via(r.cassetto), id: uuid() }, 'Pulizia registrata ✓');
+  },
   notifiche() { bottoneNotifiche(); },
   /* Prova delle notifiche (1.5): "subito" o "chiusa" (dopo 15 minuti, ad app chiusa) */
   async prova(el) {
@@ -1479,6 +1748,7 @@ const azioni = {
   },
   async preferenze() {
     const ora = $('#prefOra').value || S.io.ora;
+    if (ora < '07:00' || ora > '20:45') return toast('Scegli un orario tra le 7:00 e le 20:45: dopo le 21 le notifiche arrivano silenziose.', 'avviso', 6000);
     await azioneOnline('preferenze', {
       promemoria: $('#prefProm').checked, ora,
       preavviso: $('#prefPre').checked, giorni: Number($('#prefGiorni').value)
@@ -1546,6 +1816,17 @@ setInterval(() => {
 }, 60000);
 
 leggiCodiceDaIndirizzo();
+if (/^#(pulizia|turni|pellet|caldaia|oggi)$/.test(location.hash)) {             // 1.6: aperta da una notifica
+  pagina = location.hash.slice(1);
+  history.replaceState(null, '', location.pathname + location.search);
+}
+window.addEventListener('hashchange', () => {
+  if (/^#(pulizia|turni|pellet|caldaia|oggi)$/.test(location.hash)) { pagina = location.hash.slice(1); history.replaceState(null, '', location.pathname + location.search); disegna(); scrollTo(0, 0); }
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.tipo === 'apri' && /^[a-z]+$/.test(d.pagina || '')) { pagina = d.pagina; disegna(); scrollTo(0, 0); aggiorna({ silenzioso: true }); }
+});
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 disegna();
 aggiorna({ silenzioso: !!S }).then(dopoCollegamento);
