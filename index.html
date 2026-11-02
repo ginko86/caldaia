@@ -202,6 +202,9 @@ table.dati td:last-child{text-align:right;font-weight:650}
 .errore-finestra{color:var(--errore);font-weight:650;min-height:1.2em;margin-top:6px}
 .btn.mini{min-height:36px;font-size:.85rem;width:auto;padding:4px 10px;border-radius:10px}
 .vuoto{text-align:center;padding:30px 10px}
+ol.passi{margin:4px 0 0;padding-left:24px}
+ol.passi li{padding:5px 0}
+.prove{margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)}
 .vuoto img{width:84px;height:84px;border-radius:20px}
 </style>
 </head>
@@ -235,8 +238,11 @@ table.dati td:last-child{text-align:right;font-weight:650}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.4, 1 novembre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.4).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.5, 2 novembre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.5).
+ *  1.5: turni da lunedì a domenica (vista Mese); prova delle notifiche nelle
+ *       Impostazioni ("Prova adesso" e "Prova con l'app chiusa"); pagina
+ *       Caldaia con la procedura di accensione a mano.
  *  1.4: "Ho preso sacchi" con destinazioni a tag e pulsante "Altro"; chi è
  *       registrato con il nome di un tag (Romano) lo trova già scelto; scritta
  *       "Avviseremo Milena del carico di cortesia"; scheda "Altri" con dettagli.
@@ -244,7 +250,7 @@ table.dati td:last-child{text-align:right;font-weight:650}
  *       non entrano nel consumo; totali della stagione nella pagina Pellet.
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.4';
+const APP_VER = '1.5';
 const MAX_TAG = 25;            // lunghezza massima di una destinazione scritta con "Altro"
 const TAG_VISIBILI = 6;        // oltre alle fisse, quanti tag recenti mostrare come pulsanti
 const MAX_PRELIEVO = 10;       // sacchi portati via scelti con i pulsanti (lo script ne accetta fino a 30)
@@ -887,7 +893,7 @@ function vistaMese(v) {
   if (!ui.mese) ui.mese = oggi.slice(0, 7);
   const [y, m] = ui.mese.split('-').map(Number);
   const primo = `${y}-${p2(m)}-01`;
-  const inizio = addG(primo, -dk(primo).getUTCDay()); // domenica: ogni riga è un turno
+  const inizio = addG(primo, -((dk(primo).getUTCDay() + 6) % 7)); // lunedì: ogni riga è un turno
   let celle = '';
   for (let i = 0; i < 42; i++) {
     const k = addG(inizio, i);
@@ -899,16 +905,16 @@ function vistaMese(v) {
     const c = mostra ? colore(chi) : '';
     const alfa = t && t.stato === 'previsto' ? '30' : '66';
     const stile = mostra ? `background:${c}${alfa};border-bottom:4px solid ${c}` : '';
-    const nome = mostra && (cop || dk(k).getUTCDay() === 0) ? `<small>${cop ? '🤝 ' : ''}${esc(chi)}</small>` : '';
+    const nome = mostra && (cop || dk(k).getUTCDay() === 1) ? `<small>${cop ? '🤝 ' : ''}${esc(chi)}</small>` : '';
     celle += `<div class="g ${k.slice(0, 7) !== ui.mese ? 'fuori' : ''} ${k === oggi ? 'oggi' : ''}" style="${stile}">${dk(k).getUTCDate()}${nome}</div>`;
   }
   return `<div class="mese-testa">
       <button class="btn piccolo" data-az="mese" data-d="-1" aria-label="Mese precedente">‹</button>
       <b>${MML[m - 1]} ${y}</b>
       <button class="btn piccolo" data-az="mese" data-d="1" aria-label="Mese successivo">›</button></div>
-    <div class="calendario">${['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'].map(g => `<div class="gs">${g}</div>`).join('')}${celle}</div>
+    <div class="calendario">${['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'].map(g => `<div class="gs">${g}</div>`).join('')}${celle}</div>
     <div class="legenda">${(v.appartamenti || []).map(a => `<span class="pill" style="--c:${esc(a.colore)}">${esc(a.nome)}</span>`).join('')}</div>
-    <p class="tenue piccolo">Ogni riga è una settimana di turno, da domenica a sabato. Colori pieni: confermate. Colori tenui: previste. 🤝 = giorno coperto da un altro appartamento.</p>`;
+    <p class="tenue piccolo">Ogni riga è una settimana di turno, da lunedì a domenica. Colori pieni: confermate. Colori tenui: previste. 🤝 = giorno coperto da un altro appartamento.</p>`;
 }
 
 function sezioneIndisponibilita(v) {
@@ -1019,7 +1025,7 @@ function paginaPellet(v) {
 const STATI = [
   ['OFF', 'Spenta.'],
   ['Chec', 'Controllo iniziale dopo l\'accensione.'],
-  ['Acc', 'Accensione in corso: deve formarsi una bella fiamma nel braciere.'],
+  ['Acc', 'Accensione: compare dopo che hai acceso il braciere a mano e premuto ON. Deve formarsi una bella fiamma in tutto il braciere.'],
   ['Stab', 'Stabilizzazione della fiamma.'],
   ['rEc', 'Recupero dell\'accensione.'],
   ['Mod', 'Modulazione: lavora regolando la potenza.'],
@@ -1036,10 +1042,10 @@ const ALLARMI = [
   ['Sic', 'Eccesso di temperatura dell\'acqua.', 'fra', 'Come «Cald»: avvisa Francesco.'],
   ['Press', 'Errore di sicurezza del pressostato.', 'fra', 'Avvisa Francesco. Non provare a riaccendere più volte di fila.'],
   ['Vent', 'Errore della ventola aspirazione fumi.', 'fra', 'Avvisa Francesco. Spesso c\'entra la pulizia della ventola.'],
-  ['AccF', 'La caldaia non è riuscita ad accendersi.', 'tu',
-    'Controlla che nella tramoggia ci sia pellet e che il braciere non sia pieno di cenere, con i fori liberi. Poi riaccendi. Se non riparte, avvisa Francesco.'],
+  ['AccF', 'La caldaia non è riuscita ad accendersi: il fuoco non ha preso.', 'tu',
+    'Puoi riprovare subito, rifacendo l\'accensione dall\'inizio (vedi «Accensione»). Prima controlla: pellet nel braciere non troppo (circa metà), Diavolina sufficiente, legnetti asciutti e abbastanza, fiamma ben formata prima di socchiudere la porta. Se non parte neanche la seconda volta, avvisa Francesco.'],
   ['SPAc', 'Spegnimento accidentale: il fuoco si è spento da solo.', 'tu',
-    'Controlla tramoggia (vuota?) e braciere (troppa cenere o «sassi» di pellet vetrificato). Pulisci il braciere e riaccendi. Se succede spesso, avvisa Francesco.'],
+    'Controlla tramoggia (vuota?) e braciere (troppa cenere o «sassi» di pellet vetrificato). Pulisci il braciere e riaccendi seguendo «Accensione». Se succede spesso, avvisa Francesco.'],
   ['Sond', 'Le sonde di temperatura leggono valori sbagliati.', 'fra', 'Avvisa Francesco: serve un controllo.']
 ];
 const PULIZIE = [
@@ -1050,8 +1056,28 @@ const PULIZIE = [
   ['Ogni anno', 'Controllo delle coclee; controllo generale e libretto d\'impianto con il tecnico.'],
   ['Fine stagione', 'Svuotare tramoggia e coclee, lasciare le porte socchiuse.']
 ];
+const ACCENSIONE = [
+  ['Prima di cominciare', [
+    'Interruttore generale su <b>I</b>: il pulsante si illumina di rosso e sul display compare <b>OFF</b>.',
+    'Controlla che nella tramoggia ci sia pellet, poi richiudi il coperchio.',
+    'Il braciere deve essere pulito, con i fori liberi, e il cassetto della cenere al suo posto.'
+  ]],
+  ['Accensione', [
+    'Apri la porta inferiore e metti a mano il pellet nel braciere, <b>fino a circa metà</b>.<div class="piccolo tenue">Trucco: a caldaia spenta tieni premuto <b>SET</b>: la coclea porta il pellet da sola e sul display compare <b>LoAd</b>.</div>',
+    'Sbriciola sopra alcuni cubetti di <b>Diavolina</b>.',
+    'Sopra, fai una piccola piramide di <b>legnetti sottili e asciutti</b>.',
+    'Accendi la Diavolina.',
+    'Tieni premuto <b>ON per 5 secondi</b>: lampeggia <b>ACC</b> e parte la ventola.',
+    'Quando la fiamma è <b>ben formata</b>, socchiudi la porta.',
+    'Quando i legnetti bruciano bene, <b>chiudi la porta</b>.'
+  ]],
+  ['Dopo', [
+    'Dal vetro spia deve vedersi una fiamma viva in tutto il braciere. Il display passa da <b>ACC</b> a <b>Stab</b>, poi mostra la temperatura: da qui fa tutto da sola.'
+  ]]
+];
 const PROBLEMI = [
-  ['Premi ON e non si accende nulla', 'Controlla che arrivi corrente (interruttore generale acceso, spia rossa). Se è scattato il termostato di sicurezza, riarmalo (vedi tSic).'],
+  ['Premi ON e il display non reagisce', 'Controlla che arrivi corrente (interruttore generale acceso, spia rossa). Se è scattato il termostato di sicurezza, riarmalo (vedi tSic).'],
+  ['Il fuoco non prende', 'Riprova subito (vedi «Accensione»), controllando: pellet nel braciere non troppo (circa metà), Diavolina sufficiente, legnetti asciutti e abbastanza, fiamma ben formata prima di socchiudere la porta. Alla seconda volta che non parte, avvisa Francesco.'],
   ['La coclea gira ma il pellet non arriva', 'Tramoggia vuota: caricala. Se è piena, potrebbe esserci qualcosa che blocca: avvisa Francesco.'],
   ['Fiamma piccola, la caldaia non scalda', 'Spesso è troppa cenere nel braciere: puliscilo. Se continua, avvisa Francesco.'],
   ['Si spegne da sola', 'Braciere pieno o fori ostruiti, pellet di cattiva qualità o coclea bloccata. Pulisci il braciere; poi avvisa Francesco.'],
@@ -1067,6 +1093,19 @@ function paginaCaldaia() {
     <details open><summary>⚠️ Allarmi sul display</summary><div class="contenuto">
       <p class="piccolo tenue">Con la caldaia in allarme il display alterna «ALt» e il codice. A caldaia spenta, i tasti + o − cancellano la scritta: se il problema c'è ancora, ricompare.</p>
       ${codici(ALLARMI, true)}</div></details>
+    <details><summary>🔥 Accensione (a mano)</summary><div class="contenuto">
+      ${(() => { let n = 0; return ACCENSIONE.map(g => `<h3>${esc(g[0])}</h3><ol class="passi" start="${n + 1}">${g[1].map(t => { n++; return `<li>${t}</li>`; }).join('')}</ol>`).join(''); })()}
+      <div class="banner avviso" style="margin:12px 0 0"><span>⚠️</span><div class="testo"><b>Mai alcol, benzina o altri liquidi.</b></div></div>
+      <h3>Se il fuoco non prende</h3>
+      <p class="piccolo">Puoi riprovare subito. Prima controlla che:</p>
+      <ul class="piccolo" style="margin:4px 0;padding-left:20px">
+        <li>il pellet nel braciere non sia troppo, circa metà;</li>
+        <li>la Diavolina sia sufficiente;</li>
+        <li>i legnetti siano asciutti e abbastanza;</li>
+        <li>la fiamma sia ben formata prima di socchiudere la porta.</li>
+      </ul>
+      <p class="piccolo">Se non parte neanche la seconda volta, avvisa Francesco.</p>
+    </div></details>
     <details><summary>📟 Le scritte del display</summary><div class="contenuto">${codici(STATI, false)}</div></details>
     <details><summary>🧹 Pulizie</summary><div class="contenuto">
       <p class="piccolo"><b>Sempre:</b> guanti, mascherina, e mai pulire con la caldaia accesa usando prodotti infiammabili. Per camera fumi e ventola: caldaia fredda e interruttore su 0.</p>
@@ -1115,6 +1154,13 @@ function paginaImpostazioni(v) {
           : 'In Chrome tocca il lucchetto accanto all\'indirizzo → «Autorizzazioni» → «Notifiche» → «Consenti».'}
         Poi torna qui e tocca «Riprova».</div></div>` : ''}
       ${st !== 'no' ? `<button class="btn ${st === 'attive' ? '' : 'primario'}" data-az="notifiche">${st === 'attive' ? 'Ricollega le notifiche' : st === 'denied' ? 'Riprova' : 'Attiva le notifiche'}</button>` : ''}
+      ${st === 'attive' ? `<div class="prove">
+        <h3 style="margin-top:0">Prova le notifiche</h3>
+        <button class="btn" data-az="prova" data-tipo="subito">Prova adesso</button>
+        <p class="tenue piccolo">Arriva tra pochi secondi: ti dice che le notifiche sono attivate.</p>
+        <button class="btn" data-az="prova" data-tipo="chiusa">Prova con l'app chiusa</button>
+        <p class="tenue piccolo">Ti arriverà una notifica di prova tra 15 e 30 minuti. Chiudi l'app, toglila anche dalle app recenti e metti via il telefono. Serve per verificare che le impostazioni di risparmio energetico non blocchino le notifiche.</p>
+      </div>` : ''}
     </section>
     <section class="scheda">
       <h2>I miei promemoria</h2>
@@ -1409,6 +1455,22 @@ const azioni = {
     await azioneOnline('indispRimuovi', { id: el.dataset.id }, 'Assenza tolta');
   },
   notifiche() { bottoneNotifiche(); },
+  /* Prova delle notifiche (1.5): "subito" o "chiusa" (dopo 15 minuti, ad app chiusa) */
+  async prova(el) {
+    const tipo = el.dataset.tipo;
+    // ricontrolla la registrazione del telefono, ma senza aspettare più di 5 secondi
+    // (se il service worker non è ancora pronto si resterebbe fermi qui)
+    attesa(true, 'Preparo la prova…');
+    try { await Promise.race([attivaNotifiche(), new Promise((_, no) => setTimeout(() => no(new Error('tempo')), 5000))]); }
+    catch (e) { /* si prova lo stesso: lo script dirà se manca il telefono */ }
+    finally { attesa(false); }
+    const r = await azioneOnline('prova', { tipo });
+    if (!r) return;
+    if (/nessun telefono/i.test(r.esito || '')) toast('A tuo nome non risulta nessun telefono: tocca «Ricollega le notifiche» e riprova.', 'avviso', 7000);
+    else if (/^ERRORE/.test(r.esito || '')) toast('Lo script non è riuscito a spedire la prova. Avvisa Francesco.', 'errore', 7000);
+    else if (tipo === 'subito') toast('Prova inviata: arriva tra pochi secondi.', 'ok', 5000);
+    else toast('Prova prenotata: arriverà tra 15 e 30 minuti. Ora chiudi l\'app e toglila dalle recenti.', 'ok', 8000);
+  },
   async installa() {
     if (!installPrompt) return;
     installPrompt.prompt();

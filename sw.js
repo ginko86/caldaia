@@ -3,9 +3,12 @@
  * Fa due lavori:
  *  1. tiene l'app sul telefono, così si apre anche senza campo;
  *  2. riceve le notifiche di Firebase quando l'app è chiusa.
+ * 1.5: quando arriva una notifica di PROVA, avvisa lo script da solo
+ *      (azione "provaArrivata"), così nel foglio si vede che è arrivata.
  * Quando si pubblica una nuova versione dell'app, aumentare VERSIONE.
  */
-const VERSIONE = '1.4.0';
+const VERSIONE = '1.5.0';
+const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
 const CACHE = 'caldaia-' + VERSIONE;
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const FILE_APP = [
@@ -16,6 +19,25 @@ const FILE_APP = [
   './icona-512.png',
   './icona-maskable-512.png'
 ];
+
+/* Conferma di arrivo delle notifiche di prova (1.5).
+ * Registrato PRIMA di Firebase: riceve ogni notifica in arrivo, ad app chiusa
+ * o aperta, e la lascia mostrare a Firebase come sempre. Se nei dati c'è il
+ * numero di una prova, lo rimanda allo script. Non porta il codice personale:
+ * il numero da solo basta allo script per scrivere "sì, alle …" nel foglio. */
+self.addEventListener('push', event => {
+  let prova = '';
+  try {
+    const p = event.data ? event.data.json() : null;
+    prova = String((p && p.data && p.data.prova) || '');
+  } catch (e) { return; }
+  if (!/^[0-9a-f]{16}$/.test(prova)) return;
+  event.waitUntil(fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ azione: 'provaArrivata', prova: prova })
+  }).catch(() => null));
+});
 
 /* Tocco su una notifica: apre (o riporta in primo piano) l'app.
  * Registrato PRIMA di Firebase, così funziona anche quando la notifica
