@@ -226,6 +226,32 @@ ol.passi li{padding:5px 0}
 .voce-man{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--linea)}
 .voce-man:first-child{border-top:0}
 .voce-man .cresce{flex:1;min-width:0}
+/* 1.7 – sbancalamento */
+.sbanc{border:2px solid var(--fuoco)}
+.sbanc.consigliata{border-color:var(--linea)}
+.sbanc .testa{display:flex;align-items:flex-start;gap:10px}
+.sbanc .testa h2{flex:1;margin:0}
+.chiudi{background:none;border:0;color:var(--tenue);font-size:1.3rem;line-height:1;width:40px;height:40px;border-radius:10px;cursor:pointer}
+.giorni-sb{list-style:none;margin:8px 0 0;padding:0}
+.giorni-sb li{padding:9px 0;border-top:1px solid var(--linea)}
+.giorni-sb li:first-child{border-top:0}
+.giorni-sb .fasce{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:4px}
+.giorni-sb .fascia{background:var(--carta);border-radius:10px;padding:6px 8px;font-size:.88rem;min-width:0;overflow-wrap:anywhere}
+.giorni-sb .fascia.piove{opacity:.55}
+.giorni-sb .fascia b{display:block;font-size:.78rem;color:var(--tenue);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.passi-sb{counter-reset:p;list-style:none;margin:10px 0 0;padding:0}
+.passi-sb>li{counter-increment:p;background:var(--carta);border-radius:14px;padding:12px 12px 12px 48px;margin-top:10px;position:relative}
+.passi-sb>li::before{content:counter(p);position:absolute;left:12px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--fuoco);color:#fff;font-weight:800;display:grid;place-items:center;font-size:.9rem}
+.passi-sb>li.fatto::before{content:"✓";background:var(--ok)}
+.passi-sb .campo{margin:8px 0 0}
+.passi-sb .btn{margin-top:8px}
+.quota{font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums}
+.chi{font-size:.92rem}
+.scelta.risposta{grid-template-columns:1fr 1fr}
+.scelta.risposta button{height:60px;font-size:1rem;line-height:1.15}
+.scelta.risposta button small{display:block;font-size:.74rem;font-weight:600;opacity:.85}
+.giorno-risp{margin:14px 0 4px;font-weight:700}
+.giorno-risp .etic{margin-left:6px}
 </style>
 </head>
 <body>
@@ -260,8 +286,13 @@ ol.passi li{padding:5px 0}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.6, novembre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.6).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.7, novembre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.7).
+ *  1.7: sbancalamento. Riquadro nella pagina Oggi (proposta da rispondere,
+ *       sbancalamento deciso con "Ci sono anch'io", "Oggi si sbancala" con la
+ *       conta e poi "Pallet sbancalato"); in cima alla pagina Pellet la finestra,
+ *       il giro con le risposte di tutti, la quota dei sacchi registrati e, per
+ *       Francesco, "Fissa il giorno". "Pallet sbancalato" chiede prima la conta.
  *  1.6: pagina Pulizia (pulizia completa con semaforo, cassetto cenere, pulizie
  *       del libretto), barra in basso a 5 voci, semaforo nella pagina Oggi,
  *       notifiche silenziose di notte, apertura della pagina dalla notifica.
@@ -275,7 +306,7 @@ ol.passi li{padding:5px 0}
  *       non entrano nel consumo; totali della stagione nella pagina Pellet.
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.6';
+const APP_VER = '1.7';
 const MAX_TAG = 25;            // lunghezza massima di una destinazione scritta con "Altro"
 const TAG_VISIBILI = 6;        // oltre alle fisse, quanti tag recenti mostrare come pulsanti
 const MAX_PRELIEVO = 10;       // sacchi portati via scelti con i pulsanti (lo script ne accetta fino a 30)
@@ -297,7 +328,8 @@ const MAX_SACCHI = 6;          // massimo per un carico (tramoggia 80 kg ≈ 5,3
 const K = {
   codice: 'cald.codice', stato: 'cald.stato', statoOra: 'cald.statoOra', coda: 'cald.coda',
   sacchi: 'cald.sacchi', token: 'cald.token', tokenOra: 'cald.tokenOra', tokenCod: 'cald.tokenCod',
-  soloMiei: 'cald.soloMiei', vista: 'cald.vistaTurni', ieriVisto: 'cald.ieriVisto'
+  soloMiei: 'cald.soloMiei', vista: 'cald.vistaTurni', ieriVisto: 'cald.ieriVisto',
+  sbChiuso: 'cald.sbancChiuso'      // 1.7: proposta consigliata chiusa (id del giro)
 };
 const ls = {
   get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -721,6 +753,7 @@ function paginaOggi(v) {
   const primo = (v.turni || [])[0];
   let h = bannerDati();
   h += semaforoOggi(v);                                    // 1.6: solo se giallo
+  h += riquadroSbancOggi(v);                               // 1.7: solo se chiede un'azione
 
   // Turno della settimana (ed eventuale giorno coperto da un altro)
   if (corrente) {
@@ -987,7 +1020,7 @@ function paginaPellet(v) {
   const perPallet = v.sacchiPerPallet || 70;
   const fuori = Math.max(0, s.pallet) * perPallet;
   const totGiorni = s.media > 0 ? Math.floor((s.locale + fuori) / s.media) : null;
-  let h = bannerDati() + schedaSerbatoio(v, false);
+  let h = bannerDati() + sezioneSbancPellet(v) + schedaSerbatoio(v, false);   // 1.7: sbancalamento in alto
   h += `<section class="scheda">
     <div class="griglia2">
       <div class="cella"><div class="tenue piccolo">Consumo medio</div><div class="val">${esc(String(s.media).replace('.', ','))}</div><div class="tenue piccolo">sacchi al giorno · ${esc(s.fonteMedia)}</div></div>
@@ -997,7 +1030,7 @@ function paginaPellet(v) {
   </section>
   <section class="scheda">
     <h2>Avete portato dentro un pallet?</h2>
-    <p class="tenue">Registralo quando i sacchi sono nel locale: ogni pallet aggiunge ${esc(perPallet)} sacchi.</p>
+    <p class="tenue">Prima si contano i sacchi interi rimasti, poi si registra il pallet: ogni pallet aggiunge ${esc(perPallet)} sacchi.</p>
     <button class="btn primario" data-az="sbancala">Pallet sbancalato</button>
   </section>
   <section class="scheda">
@@ -1319,6 +1352,126 @@ function paginaPulizia(v) {
   return h;
 }
 
+/* =====================================================================
+ *  SBANCALAMENTO (1.7)
+ *  Le risposte, "Ci sono anch'io" e "Fissa il giorno" richiedono la rete, come
+ *  turni e assenze. La conta e "Pallet sbancalato" funzionano anche senza campo.
+ * ===================================================================== */
+const RISP_NOMI = { MATTINA: 'mattina', POMERIGGIO: 'pomeriggio', ENTRAMBE: 'tutti e due', NO: 'non ci sono' };
+const ORE_CONTA = 3;
+const giornoMeseL = k => { const d = dk(k); return GGL[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MML[d.getUTCMonth()]; };
+const fasciaBreve = t => String(t || '').replace(/0?(\d{1,2}):00/g, '$1');
+const mieRisposte = g => (g.risposte.find(r => r.persona === S.io.nome) || {}).giorni || {};
+const rispostoTutto = g => { const m = mieRisposte(g); return g.giorni.filter(d => d.giorno > oggiK()).every(d => m[d.giorno]); };
+const chiCe = (g, giorno, fascia) => g.risposte.filter(r => r.giorni[giorno] === fascia || r.giorni[giorno] === 'ENTRAMBE').map(r => r.persona);
+/* Una conta delle ultime 3 ore (anche ancora sul telefono) vale per "Pallet sbancalato" */
+function contaRecente(v) {
+  const q = coda().filter(o => o.azione === 'conta' && o.codice === codice() && Date.now() - new Date(o.quando) < ORE_CONTA * 3600000).pop();
+  if (q) return { sacchi: q.sacchi, ora: oraLocale(new Date(q.quando)), attesa: true };
+  const sbn = v.sbancalamento;
+  return sbn && !sbn.errore ? sbn.contaRecente : null;
+}
+function elencoGiorniSb(lista) {
+  const p = lista.map(k => GG[dk(k).getUTCDay()] + ' ' + dk(k).getUTCDate());
+  const ultimo = lista[lista.length - 1];
+  return (p.length > 1 ? p.slice(0, -1).join(', ') + ' e ' + p[p.length - 1] : p[0]) + ' ' + MM[dk(ultimo).getUTCMonth()];
+}
+function testoDeciso(sbn, g) {
+  const d = g.deciso;
+  const chi = d.persone.length ? d.persone.join(', ') : 'nessuno si è ancora aggiunto';
+  return `<b>${esc(giornoMeseL(d.giorno))} ${esc(RISP_NOMI[d.fascia])}</b>${d.fascia === 'POMERIGGIO' && d.tramonto ? ` <span class="tenue piccolo">(luce fino alle ${esc(d.tramonto)})</span>` : ''}
+    <div class="chi">Ci sono: ${esc(chi)}${d.coppia ? ` · <b>in ${esc(d.persone.length)}: si possono fare 2 pallet</b>` : ''}</div>
+    ${d.fissato ? '<div class="tenue piccolo">Giorno fissato da Francesco.</div>' : ''}`;
+}
+
+/* Pagina Oggi: solo quello che chiede un'azione */
+function riquadroSbancOggi(v) {
+  const sbn = v.sbancalamento;
+  if (!sbn || sbn.errore || !sbn.giro || !v.caldaiaAccesa) return '';
+  const g = sbn.giro, oggi = oggiK();
+  if (g.stato === 'APERTO') {
+    if (rispostoTutto(g) || (!g.richiesta && ls.get(K.sbChiuso) === g.id)) return '';
+    const futuri = g.giorni.filter(d => d.giorno > oggi).map(d => d.giorno);
+    if (!futuri.length) return '';
+    return `<section class="scheda sbanc ${g.richiesta ? '' : 'consigliata'}"><div class="testa"><h2>📦 Sbancalamento</h2>
+      ${g.richiesta ? '' : `<button class="chiudi" data-az="sbancChiudi" data-id="${esc(g.id)}" aria-label="Chiudi">✕</button>`}</div>
+      <p>${g.tipo === 'COPPIA' ? `Si possono portare dentro 2 pallet (servono ${esc(sbn.soglie.minCoppia)} persone; in ${esc(sbn.soglie.minPallet)} se ne porta uno).`
+        : g.richiesta ? 'Bisogna portare dentro un pallet.' : 'Si può già portare dentro un pallet.'}</p>
+      <p>Giorni proposti: <b>${esc(elencoGiorniSb(futuri))}</b>.${g.scadenza ? ` Rispondi entro ${esc(GGL[dk(g.scadenza).getUTCDay()])} alle ${esc(sbn.soglie.oraRisposta || '18:00')}.` : ''}</p>
+      <button class="btn primario" data-az="sbancRispondi">Rispondi</button>
+      <p class="fonte">Proposti in base alle previsioni meteo · Open-Meteo.com</p></section>`;
+  }
+  if (g.stato === 'DECISO' && g.deciso) {
+    const d = g.deciso, ci = d.persone.includes(S.io.nome);
+    if (d.giorno > oggi) {
+      return `<section class="scheda sbanc"><div class="testa"><h2>📦 Sbancalamento deciso</h2></div>
+        <p>${testoDeciso(sbn, g)}</p>
+        ${ci ? '<p class="tenue piccolo">Ci sei anche tu. Se cambia qualcosa, avvisa gli altri a voce o su WhatsApp.</p>' : '<button class="btn" data-az="sbancAggiungi">Ci sono anch\'io</button>'}</section>`;
+    }
+    const recente = contaRecente(v);
+    return `<section class="scheda sbanc"><div class="testa"><h2>📦 ${d.giorno === oggi ? 'Oggi si sbancala' : 'Avete sbancalato?'}</h2></div>
+      <p>${testoDeciso(sbn, g)}</p>
+      <ol class="passi-sb">
+        <li class="${recente ? 'fatto' : ''}"><b>Prima di iniziare: conta i sacchi interi rimasti</b>
+          ${recente ? `<div>Contati <b>${esc(recente.sacchi)}</b> alle ${esc(recente.ora)}${recente.attesa ? ' <span class="etic attesa">da inviare</span>' : ''}.</div>`
+            : `<label class="campo"><span>Sacchi interi contati</span><input type="number" class="numero" id="sbContati" inputmode="numeric" min="0" max="500" step="1"></label>
+               <button class="btn" data-az="sbancConta">Registra la conta</button>`}</li>
+        <li><b>Poi registra i pallet portati dentro</b>
+          <button class="btn primario" data-az="sbancala">Pallet sbancalato</button></li>
+      </ol>
+      ${ci ? '' : '<button class="link-btn" data-az="sbancAggiungi">Ci sono anch\'io</button>'}</section>`;
+  }
+  return '';
+}
+
+/* Pagina Pellet, in alto: finestra, giro con le risposte, quota registrata */
+function sezioneSbancPellet(v) {
+  const sbn = v.sbancalamento;
+  if (!sbn) return '';
+  if (sbn.errore) return `<div class="banner errore"><div class="testo"><b>Sbancalamento non disponibile</b>${esc(sbn.errore)}. Avvisa Francesco.</div></div>`;
+  const oggi = oggiK(), d = sbn.date || {}, c = sbn.circa || {}, g = sbn.giro;
+  const data = (k, circa) => (k <= oggi ? 'da oggi' : (circa ? 'circa dal ' : 'dal ') + fmtG(k, false));
+  let finestra;
+  if (sbn.pallet <= 0) finestra = 'Fuori non ci sono più pallet.';
+  else if (!d.apertura && !d.coppia) finestra = 'Nessuno sbancalamento in vista.';
+  else {
+    const parti = [];
+    if (d.apertura) parti.push('Un pallet ' + data(d.apertura, c.apertura));
+    if (d.coppia) parti.push('coppia ' + data(d.coppia, c.coppia));
+    if (d.chiusura) parti.push((d.chiusura <= oggi ? 'il locale è quasi vuoto' : 'entro ' + (c.chiusura ? 'circa ' : '') + 'il ' + fmtG(d.chiusura, false)));
+    finestra = parti.join(' · ');
+  }
+  let h = `<section class="scheda"><h2>📦 Sbancalamento</h2><p style="font-size:1.05rem">${esc(finestra)}</p>`;
+  if (g && g.stato === 'APERTO') {
+    const nonRisp = g.risposte.filter(r => !g.giorni.filter(x => x.giorno > oggi).every(x => r.giorni[x.giorno])).map(r => r.persona);
+    h += `<h3>${g.richiesta ? 'Proposta in corso' : 'Proposta (risposta facoltativa)'}${g.fase === 'SECONDO GIRO' ? ' · seconda' : ''}</h3>
+      <ul class="giorni-sb">${g.giorni.map(x => {
+        const f = (nome, fascia, info) => {
+          const chi = chiCe(g, x.giorno, fascia);
+          return `<div class="fascia ${info.asciutta ? '' : 'piove'}"><b>${nome}${info.asciutta ? '' : ' · pioggia'}</b>${chi.length ? esc(chi.join(', ')) : '<span class="tenue">nessuno</span>'}</div>`;
+        };
+        return `<li><b>${esc(GGL[dk(x.giorno).getUTCDay()])} ${esc(fmtG(x.giorno, false))}</b>${x.coppia && g.tipo === 'COPPIA' ? ' <span class="etic">2 pallet</span>' : ''}
+          <div class="fasce">${f('Mattina', 'MATTINA', x.mattina)}${f(x.tramonto ? 'Pom. · luce fino ' + x.tramonto : 'Pomeriggio', 'POMERIGGIO', x.pomeriggio)}</div></li>`;
+      }).join('')}</ul>
+      ${nonRisp.length ? `<p class="tenue piccolo">Non hanno ancora risposto: ${esc(nonRisp.join(', '))}.</p>` : '<p class="tenue piccolo">Hanno risposto tutti.</p>'}
+      ${g.scadenza ? `<p class="piccolo">Si decide ${esc(GGL[dk(g.scadenza).getUTCDay()])} ${esc(fmtG(g.scadenza, false))} alle ${esc(sbn.soglie.oraRisposta || '18:00')}, o prima se rispondono tutti.</p>` : ''}
+      <button class="btn ${rispostoTutto(g) ? '' : 'primario'}" data-az="sbancRispondi">${rispostoTutto(g) ? 'Cambia la mia risposta' : 'Rispondi'}</button>
+      <p class="fonte">Proposti in base alle previsioni meteo · Open-Meteo.com</p>`;
+    if (S.io.admin && g.note.length) h += `<h3>Note (le vedi solo tu)</h3><ul class="lista">${g.note.map(n => `<li><span class="cresce"><b>${esc(n.persona)}</b>: ${esc(n.nota)}</span></li>`).join('')}</ul>`;
+  } else if (g && g.stato === 'DECISO' && g.deciso) {
+    h += `<h3>Deciso</h3><p>${testoDeciso(sbn, g)}</p>
+      ${g.deciso.persone.includes(S.io.nome) ? '' : '<button class="btn" data-az="sbancAggiungi">Ci sono anch\'io</button>'}`;
+  }
+  const q = sbn.quota;
+  if (q && q.quota != null) {
+    h += `<h3>Sacchi registrati</h3><div class="riga"><span class="quota">${esc(q.quota)}%</span>
+      <span class="tenue piccolo">Ultima conta ${esc(fmtG(q.giorno))} alle ${esc(q.ora)}: ${esc(q.contati)} sacchi, ne risultavano ${esc(q.risultavano)}.
+      ${q.mancanti < 0 ? esc(sacchiTesto(-q.mancanti)) + ' in più del previsto.' : q.mancanti > 0 ? esc(sacchiTesto(q.mancanti)) + ' non registrati.' : ''}</span></div>`;
+  }
+  if (S.io.admin) h += '<div class="btns"><button class="btn piccolo" data-az="sbancFissa">Fissa il giorno</button></div>';
+  return h + '</section>';
+}
+
 const gruppo = (nome, valori, scelto, cls) => `<div class="scelta ${cls || 'giudizio'}" data-gruppo="${nome}">${valori.map(x =>
   `<button data-valore="${esc(x)}" aria-pressed="${x === scelto}">${esc(x)}</button>`).join('')}</div>`;
 
@@ -1429,18 +1582,41 @@ const azioni = {
   async sbancala() {
     const v = vista();
     const per = v.sacchiPerPallet || 70;
+    // 1.7: prima la conta dei sacchi interi rimasti, salvo una conta delle ultime 3 ore
+    const recente = contaRecente(v);
+    let contati = null;
+    if (!recente) {
+      const c = await chiedi({
+        titolo: 'Quanti sacchi interi c\'erano ancora?',
+        html: `<p class="tenue piccolo">Prima di portare dentro i pallet: conta solo i sacchi interi, ancora chiusi, rimasti nel locale.</p>
+          <label class="campo"><span>Sacchi interi contati</span>
+          <input type="number" class="numero" data-campo="n" inputmode="numeric" min="0" max="500" step="1" autofocus></label>
+          <div class="scelta" style="grid-template-columns:1fr" data-gruppo="salta" data-multi><button data-valore="si" aria-pressed="false">Non li ho contati</button></div>`,
+        si: 'Avanti',
+        valida: x => (x.salta || []).includes('si') || (/^\d{1,3}$/.test(String(x.n || '').trim()) && Number(x.n) <= 500) ? '' : 'Scrivi il numero di sacchi interi (da 0 a 500), oppure tocca «Non li ho contati».'
+      });
+      if (!c) return;
+      if (!(c.salta || []).includes('si')) contati = Number(c.n);
+    }
+    const base = contati != null ? contati : v.sacchi.locale;
+    const diff = contati != null ? contati - v.sacchi.locale : 0;
+    const confronto = contati == null ? '' : `<p>${diff === 0 ? 'Contati ' + esc(contati) + ': i conti tornano 👍' : 'Contati ' + esc(contati) + ': ne risultavano ' + esc(v.sacchi.locale) + ' (' + esc(Math.abs(diff)) + (diff < 0 ? ' in meno' : ' in più') + '). Francesco riceve un avviso.'}</p>`;
     const scelta = await chiedi({
       titolo: 'Quanti pallet avete portato dentro?',
-      html: `<div class="scelta" style="grid-template-columns:1fr 1fr" data-gruppo="pallet">
+      html: `${confronto}${recente ? `<p class="tenue piccolo">Conta già fatta: ${esc(recente.sacchi)} sacchi alle ${esc(recente.ora)}.</p>` : ''}
+        <div class="scelta" style="grid-template-columns:1fr 1fr" data-gruppo="pallet">
         <button data-valore="1" aria-pressed="true">1</button><button data-valore="2" aria-pressed="false">2</button></div>
         <p class="tenue piccolo">Ogni pallet: +${per} sacchi nel locale, −1 pallet fuori.${v.sacchi.pallet <= 0 ? ' Attenzione: risulta che fuori non ci siano più pallet.' : ''}</p>`,
       si: 'Registra'
     });
     if (!scelta) return;
     const n = Number(scelta.pallet) || 1;
-    if (v.sacchi.locale + n * per > CAPIENZA_LOCALE) toast('Nota: nel locale risulterebbero ' + (v.sacchi.locale + n * per) + ' sacchi, oltre i ' + CAPIENZA_LOCALE + ' che ci stanno.', 'avviso', 6000);
-    const ops = [];
-    for (let i = 0; i < n; i++) ops.push({ id: uuid(), azione: 'sbancalato', quando: new Date().toISOString(), codice: codice(), chi: S.io.nome });
+    const cap = (v.sbancalamento && v.sbancalamento.soglie && v.sbancalamento.soglie.capienza) || CAPIENZA_LOCALE;   // 1.7
+    if (base + n * per > cap) toast('Nota: nel locale risulterebbero ' + (base + n * per) + ' sacchi, oltre i ' + cap + ' che ci stanno.', 'avviso', 6000);
+    const ops = [], t = Date.now();
+    // la conta parte un istante prima dei pallet, così la giacenza riparte da un numero vero
+    if (contati != null) ops.push({ id: uuid(), azione: 'conta', sacchi: contati, quando: new Date(t).toISOString(), codice: codice(), chi: S.io.nome });
+    for (let i = 0; i < n; i++) ops.push({ id: uuid(), azione: 'sbancalato', quando: new Date(t + 1000 * (i + 1)).toISOString(), codice: codice(), chi: S.io.nome });
     salvaCoda(coda().concat(ops));
     disegna();
     await svuotaCoda();
@@ -1722,6 +1898,76 @@ const azioni = {
     if (!r) return;
     const via = x => (x === nr ? '' : x || '');
     await azioneOnline('puliziaFatta', { giorno: r.giorno, ora: r.ora, sporco: via(r.sporco), sassi: via(r.sassi), cassetto: via(r.cassetto), id: uuid() }, 'Pulizia registrata ✓');
+  },
+  /* ---------- 1.7: sbancalamento ---------- */
+  async sbancRispondi() {
+    const sbn = vista().sbancalamento;
+    const g = sbn && sbn.giro;
+    if (!g || g.stato !== 'APERTO') return;
+    const mie = mieRisposte(g), futuri = g.giorni.filter(d => d.giorno > oggiK());
+    const html = futuri.map(d => {
+      const m = d.mattina.asciutta, p = d.pomeriggio.asciutta, scelta = mie[d.giorno];
+      const b = (val, testo, sub, ok) => `<button data-valore="${val}" aria-pressed="${scelta === val && ok}" ${ok ? '' : 'disabled'}>${esc(testo)}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
+      return `<div class="giorno-risp">${esc(GGL[dk(d.giorno).getUTCDay()])} ${esc(fmtG(d.giorno, false))}${d.coppia && g.tipo === 'COPPIA' ? ' <span class="etic">2 pallet</span>' : ''}</div>
+        <div class="scelta risposta" data-gruppo="${esc(d.giorno)}">
+          ${b('MATTINA', 'Mattina', m ? fasciaBreve(sbn.soglie.mattina) : 'pioggia', m)}
+          ${b('POMERIGGIO', 'Pomeriggio', p ? (d.tramonto ? 'luce fino alle ' + d.tramonto : fasciaBreve(sbn.soglie.pomeriggio)) : 'pioggia', p)}
+          ${b('ENTRAMBE', 'Tutti e due', '', m && p)}
+          ${b('NO', 'Non ci sono', '', true)}</div>`;
+    }).join('');
+    const nota = (g.risposte.find(r => r.persona === S.io.nome) || {}).nota || '';
+    const r = await chiedi({
+      titolo: 'Ci sei per sbancalare?',
+      testo: 'Rispondi per ogni giorno, anche solo «Non ci sono»: così gli altri sanno su chi contare.',
+      html: html + `<label class="campo"><span>Nota per Francesco (facoltativa)</span>
+        <input type="text" data-campo="nota" maxlength="120" placeholder="Es. io potrei anche venerdì pomeriggio" value="${esc(nota)}"></label>
+        <p class="fonte">Proposti in base alle previsioni meteo · Open-Meteo.com</p>`,
+      si: 'Invia',
+      valida: x => futuri.every(d => x[d.giorno]) ? '' : 'Rispondi per ogni giorno, anche solo «Non ci sono».'
+    });
+    if (!r) return;
+    const risposte = {};
+    futuri.forEach(d => { risposte[d.giorno] = r[d.giorno]; });
+    await azioneOnline('sbancRisposta', { giro: g.id, risposte, nota: String(r.nota || '').trim() }, 'Risposta inviata ✓');
+  },
+  sbancChiudi(el) { ls.set(K.sbChiuso, el.dataset.id); disegna(); },
+  async sbancAggiungi() {
+    const g = (vista().sbancalamento || {}).giro;
+    if (!g || !g.deciso) return;
+    if (!(await chiedi({ titolo: 'Ci sei anche tu?', testo: giornoMeseL(g.deciso.giorno) + ' ' + RISP_NOMI[g.deciso.fascia] + '. Gli altri lo vedono nell\'app.', si: 'Ci sono anch\'io' }))) return;
+    await azioneOnline('sbancAggiungi', { giro: g.id }, 'Grazie! Ci sei anche tu ✓');
+  },
+  async sbancConta() {
+    const i = $('#sbContati');
+    const val = i ? String(i.value || '').trim() : '';
+    if (!/^\d{1,3}$/.test(val) || Number(val) > 500) return toast('Scrivi il numero di sacchi interi (da 0 a 500).', 'avviso');
+    const v = vista(), n = Number(val), prima = v.sacchi.locale, diff = n - prima;
+    if (!(await chiedi({
+      titolo: diff === 0 ? 'I conti tornano 👍' : 'Registro la conta?',
+      testo: diff === 0 ? 'Risultano proprio ' + sacchiTesto(prima) + '.' : 'Risultano ' + sacchiTesto(prima) + ', tu ne hai contati ' + n + ': ' + sacchiTesto(Math.abs(diff)) + (diff < 0 ? ' in meno' : ' in più') + '. Francesco riceve un avviso.',
+      si: 'Registra'
+    }))) return;
+    const op = { id: uuid(), azione: 'conta', sacchi: n, quando: new Date().toISOString(), codice: codice(), chi: S.io.nome };
+    await accoda(op);
+    if (coda().some(o => o.id === op.id)) toast('Niente campo: la conta è salvata sul telefono e partirà da sola.', 'avviso', 6000);
+    else toast('Conta registrata ✓ Ora puoi registrare il pallet.', 'ok');
+  },
+  async sbancFissa() {
+    const sbn = vista().sbancalamento || {};
+    const oggi = oggiK(), d = sbn.date || {};
+    const r = await chiedi({
+      titolo: 'Fissa il giorno dello sbancalamento',
+      testo: 'Sostituisce la proposta in corso (o il giorno già deciso) e avvisa tutti. Gli altri si aggiungono con «Ci sono anch\'io».',
+      html: `<label class="campo"><span>Giorno</span><input type="date" data-campo="giorno" min="${oggi}" value="${esc(d.coppia && d.coppia > oggi ? d.coppia : addG(oggi, 1))}"></label>
+        <div class="campo"><span>Quando</span><div class="scelta due" data-gruppo="fascia">
+          <button data-valore="MATTINA" aria-pressed="true">Mattina<br><small>${esc(fasciaBreve(sbn.soglie ? sbn.soglie.mattina : ''))}</small></button>
+          <button data-valore="POMERIGGIO" aria-pressed="false">Pomeriggio<br><small>${esc(fasciaBreve(sbn.soglie ? sbn.soglie.pomeriggio : ''))}</small></button></div></div>
+        ${d.chiusura ? `<p class="tenue piccolo">Il locale basta fino a ${esc(GGL[dk(d.chiusura).getUTCDay()])} ${esc(fmtG(d.chiusura, false))} circa.</p>` : ''}`,
+      si: 'Fissa',
+      valida: x => !/^\d{4}-\d{2}-\d{2}$/.test(x.giorno || '') || x.giorno < oggi ? 'Scegli un giorno da oggi in poi.' : !x.fascia ? 'Scegli mattina o pomeriggio.' : ''
+    });
+    if (!r) return;
+    await azioneOnline('sbancFissa', { giorno: r.giorno, fascia: r.fascia }, 'Giorno fissato: gli altri ricevono un avviso.');
   },
   notifiche() { bottoneNotifiche(); },
   /* Prova delle notifiche (1.5): "subito" o "chiusa" (dopo 15 minuti, ad app chiusa) */
