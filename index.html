@@ -286,8 +286,10 @@ ol.passi li{padding:5px 0}
 
 <script type="module">
 /* =====================================================================
- *  CALDAIA CASA SOLAROLI – app (versione 1.7, novembre 2026)
- *  Parla con lo script Google "Caldaia" (Codice.js 1.7).
+ *  CALDAIA CASA SOLAROLI – app (versione 1.7.1, novembre 2026)
+ *  Parla con lo script Google "Caldaia" (Codice.js 1.7.1).
+ *  1.7.1: "Rimanda la pulizia" per l'amministratore, nella pagina Pulizia durante
+ *       "Pulizia vicina": +10, +20 o +30 sacchi, nota facoltativa.
  *  1.7: sbancalamento. Riquadro nella pagina Oggi (proposta da rispondere,
  *       sbancalamento deciso con "Ci sono anch'io", "Oggi si sbancala" con la
  *       conta e poi "Pallet sbancalato"); in cima alla pagina Pellet la finestra,
@@ -306,7 +308,7 @@ ol.passi li{padding:5px 0}
  *       non entrano nel consumo; totali della stagione nella pagina Pellet.
  *  Nessun dato segreto qui dentro: la chiave privata resta nello script.
  * ===================================================================== */
-const APP_VER = '1.7';
+const APP_VER = '1.7.1';
 const MAX_TAG = 25;            // lunghezza massima di una destinazione scritta con "Altro"
 const TAG_VISIBILI = 6;        // oltre alle fisse, quanti tag recenti mostrare come pulsanti
 const MAX_PRELIEVO = 10;       // sacchi portati via scelti con i pulsanti (lo script ne accetta fino a 30)
@@ -1210,7 +1212,7 @@ const DESCR_PULIZIA = {
 };
 const CASSETTO_VOCI = ['un quarto', 'metà', 'tre quarti', 'pieno', 'traboccava'];
 const NOMI_TIPO = { PRESA: 'Me ne occupo io', LASCIATA: 'Non posso più', SPENTA: 'Spenta per pulizia', PULITA: 'Pulita', RIACCESA: 'Riaccesa',
-  CASSETTO: 'Cassetto svuotato', FATTA: 'Pulizia inserita a mano', MANUALE: 'Dal libretto' };
+  CASSETTO: 'Cassetto svuotato', FATTA: 'Pulizia inserita a mano', MANUALE: 'Dal libretto', RIMANDATA: 'Pulizia rimandata' };
 const erroriCoda = {};
 const giornoRel = k => k === oggiK() ? 'oggi' : k === addG(oggiK(), -1) ? 'ieri' : fmtG(k);
 const notteTesto = k => GGL[dk(k).getUTCDay()] + ' ' + dk(k).getUTCDate();
@@ -1283,7 +1285,8 @@ function passoPulizia(pu) {
       return `<div class="passo"><b>Pulizia vicina</b>
         <p>Notte consigliata: <b>${esc(notteTesto(notte))}</b>${pu.notte.tmin != null ? ' – previsti ' + esc(temp(pu.notte.tmin)) + ', la più mite dei prossimi giorni secondo le previsioni meteo' : ''}.</p>
         <p class="tenue piccolo">Chi se ne occupa tocca il pulsante entro le ${esc(pu.limitePresa)} della sera scelta. La sera, chi carica riceve il promemoria per spegnere.</p>
-        <button class="btn primario grande" data-az="puliziaPresa">Me ne occupo io</button>${fonte}</div>`;
+        <button class="btn primario grande" data-az="puliziaPresa">Me ne occupo io</button>${fonte}
+        ${io.admin && pu.passiRimando ? '<button class="btn" style="margin-top:10px" data-az="puliziaRimanda">Rimanda la pulizia</button><p class="tenue piccolo">Lo vedi solo tu: se hai controllato la caldaia e la pulizia può aspettare.</p>' : ''}</div>`;
     case 'presa': {
       const p = pu.presa, mia = p.persona === io.nome, sera = oggi >= p.notte, dopo = oggi > p.notte;
       return `<div class="passo"><b>Se ne occupa ${esc(p.persona)}${mia ? ' (tu)' : ''}</b>
@@ -1298,7 +1301,7 @@ function passoPulizia(pu) {
     case 'pulita':
       return semaforoBox(pu) + '<button class="btn primario grande" data-az="riaccesa">Riaccesa</button>';
     default:
-      return `<div class="passo"><p>${notte ? 'Prossima pulizia verso la notte di <b>' + esc(notteTesto(notte)) + '</b>' + (pu.notte.tmin == null ? ' (stima dai sacchi)' : '') + '.' : ''}
+      return `<div class="passo">${pu.rimando ? `<p class="tenue piccolo">Pulizia rimandata da ${esc(pu.rimando.persona)} ${esc(giornoRel(pu.rimando.giorno))}${pu.rimando.sacchi ? ' (+' + esc(pu.rimando.sacchi) + ' sacchi)' : ''}: la caldaia era stata controllata.</p>` : ''}<p>${notte ? 'Prossima pulizia verso la notte di <b>' + esc(notteTesto(notte)) + '</b>' + (pu.notte.tmin == null ? ' (stima dai sacchi)' : '') + '.' : ''}
         L'avviso arriva a tutti 3 giorni prima.</p>
         ${(pu.alternative || []).length || pu.notte.tmin != null ? '<button class="btn" data-az="puliziaPresa">Me ne occupo io</button>' : ''}</div>`;
   }
@@ -1345,7 +1348,7 @@ function paginaPulizia(v) {
   h += `<section class="scheda"><h2>Storico</h2>${st.length ? `<ul class="lista">${st.map(r => {
     const det = r.tipo === 'PULITA' || r.tipo === 'FATTA'
       ? [r.sporco && r.sporco + ' sporco', r.sassi && 'sassi ' + r.sassi, r.cassetto && 'cassetto ' + r.cassetto].filter(Boolean).join(', ')
-      : r.tipo === 'CASSETTO' ? 'era ' + r.cassetto : r.tipo === 'MANUALE' ? nomeVoce(r.voce) : r.tipo === 'PRESA' && r.notte ? 'notte di ' + notteTesto(r.notte) : '';
+      : r.tipo === 'CASSETTO' ? 'era ' + r.cassetto : r.tipo === 'MANUALE' ? nomeVoce(r.voce) : r.tipo === 'PRESA' && r.notte ? 'notte di ' + notteTesto(r.notte) : r.tipo === 'RIMANDATA' && r.rimando ? '+' + r.rimando + ' sacchi' : '';
     return `<li><span class="ora">${esc(fmtG(r.giorno, false))}<br>${esc(r.ora)}</span><span class="cresce"><b>${esc(NOMI_TIPO[r.tipo] || r.tipo)}</b> · ${esc(r.persona)}
       ${det ? `<div class="tenue piccolo">${esc(det)}</div>` : ''}</span></li>`;
   }).join('')}</ul>` : '<p class="tenue">Ancora niente.</p>'}</section>`;
@@ -1838,6 +1841,24 @@ const azioni = {
     });
     if (!r) return;
     await azioneOnline('puliziaPresa', { notte: r.notte, id: uuid() }, 'Grazie! Gli altri ricevono un avviso.');
+  },
+  /* 1.7.1: solo l'amministratore, durante "Pulizia vicina" */
+  async puliziaRimanda() {
+    const pu = vista().pulizia;
+    if (!pu || !pu.passiRimando || !S.io.admin) return;
+    const media = Number(pu.media) || 0;
+    const r = await chiedi({
+      titolo: 'Rimandare la pulizia?',
+      testo: 'L\'avviso sparisce da tutte le bacheche e torna più avanti. Tutti ricevono «Pulizia rimandata: la caldaia è stata controllata, per ora non serve».',
+      html: `<div class="campo"><span>Il prossimo avviso arriva dopo altri</span>
+          <div class="scelta tre" data-gruppo="sacchi">${pu.passiRimando.map((n, i) => `<button data-valore="${n}" aria-pressed="${i === 1}">${n} sacchi${media > 0 ? `<small>circa ${Math.max(1, Math.round(n / media))} giorni</small>` : ''}</button>`).join('')}</div></div>
+        <label class="campo"><span>Nota (facoltativa, resta nel foglio)</span><input type="text" data-campo="nota" maxlength="120" placeholder="Es. braciere pulito, pochi sassi"></label>
+        <p class="tenue piccolo">Ora: ${esc(pu.bruciati)} sacchi bruciati dall'ultima pulizia. I giorni sono stimati con il consumo attuale: con il freddo l'avviso arriva prima.</p>`,
+      si: 'Rimanda',
+      valida: x => x.sacchi ? '' : 'Scegli di quanti sacchi rimandare.'
+    });
+    if (!r) return;
+    await azioneOnline('puliziaRimandata', { sacchi: Number(r.sacchi), nota: String(r.nota || '').trim(), id: uuid() }, 'Pulizia rimandata: gli altri ricevono un avviso.');
   },
   async puliziaLasciata() {
     if (!(await chiedi({ titolo: 'Non puoi più occuparti della pulizia?', testo: 'Gli altri ricevono un avviso e qualcun altro può prenderla.', si: 'Non posso più', no: 'Indietro', pericolo: true }))) return;

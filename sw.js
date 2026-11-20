@@ -11,7 +11,7 @@
  * 1.7: cambia solo la versione (le notifiche dello sbancalamento aprono la pagina Pellet).
  * Quando si pubblica una nuova versione dell'app, aumentare VERSIONE.
  */
-const VERSIONE = '1.7.0';
+const VERSIONE = '1.7.1';
 const API = 'https://script.google.com/macros/s/AKfycbywMuI1LosGfjYMh4PDK4dFXguCWY_T0xIGfpi47Dr7cTL_U2UDXFHEoiqp6b0_TxIvUA/exec';
 const CACHE = 'caldaia-' + VERSIONE;
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
